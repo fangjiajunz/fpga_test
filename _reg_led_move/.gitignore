@@ -1,0 +1,26 @@
+# Quartus generated files
+prj/db/
+prj/incremental_db/
+prj/output_files/
+prj/simulation/
+prj/*.rpt
+prj/*.summary
+prj/*.done
+prj/*.pin
+prj/*.sof
+prj/*.pof
+prj/*.jdi
+prj/*.smsg
+prj/*.qws
+prj/*.qdf
+prj/*.qar
+prj/*.qarlog
+tools/*.sof
+tools/*.jic
+tools/generated_jic/
+
+# Editor and OS files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
