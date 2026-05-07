@@ -165,6 +165,164 @@ function Resolve-SofPath {
     throw "SOF file not found: $candidate. Run compile first or use -SofPath."
 }
 
+function Write-ReportLine {
+    param(
+        [string]$Label,
+        [string]$Value
+    )
+
+    Write-Host ("  {0,-34} {1}" -f $Label, $Value)
+}
+
+function Get-SummaryValue {
+    param(
+        [string[]]$Lines,
+        [string]$Label
+    )
+
+    $escapedLabel = [regex]::Escape($Label)
+    foreach ($line in $Lines) {
+        $match = [regex]::Match($line, "^\s*$escapedLabel\s*:\s*(.+?)\s*$")
+        if ($match.Success) {
+            return $match.Groups[1].Value
+        }
+    }
+
+    return $null
+}
+
+function Write-CompileReportSummary {
+    param(
+        [string]$ProjectDirectory,
+        [string]$RevisionName
+    )
+
+    $outputDir = Join-Path $ProjectDirectory "output_files"
+    $fitSummaryPath = Join-Path $outputDir ($RevisionName + ".fit.summary")
+    $staSummaryPath = Join-Path $outputDir ($RevisionName + ".sta.summary")
+    $staReportPath = Join-Path $outputDir ($RevisionName + ".sta.rpt")
+    $fitReportPath = Join-Path $outputDir ($RevisionName + ".fit.rpt")
+
+    Write-Host ""
+    Write-Host "================ Compile Report Summary ================"
+
+    if (Test-Path $fitSummaryPath) {
+        $fitLines = Get-Content -LiteralPath $fitSummaryPath
+
+        Write-Host "Resource usage:"
+        foreach ($label in @(
+            "Family",
+            "Device",
+            "Total logic elements",
+            "Total registers",
+            "Total pins",
+            "Total memory bits",
+            "Embedded Multiplier 9-bit elements",
+            "Total PLLs"
+        )) {
+            $value = Get-SummaryValue -Lines $fitLines -Label $label
+            if ($value) {
+                Write-ReportLine -Label $label -Value $value
+            }
+        }
+    }
+    else {
+        Write-Host "Resource usage: not found $fitSummaryPath"
+    }
+
+    if (Test-Path $staSummaryPath) {
+        $staLines = Get-Content -LiteralPath $staSummaryPath
+
+        Write-Host "Timing slack:"
+        $currentType = $null
+        foreach ($line in $staLines) {
+            $typeMatch = [regex]::Match($line, "^\s*Type\s*:\s*(.+?)\s*$")
+            if ($typeMatch.Success) {
+                $currentType = $typeMatch.Groups[1].Value
+                continue
+            }
+
+            $slackMatch = [regex]::Match($line, "^\s*Slack\s*:\s*(.+?)\s*$")
+            if ($slackMatch.Success -and $currentType) {
+                Write-ReportLine -Label $currentType -Value ("Slack " + $slackMatch.Groups[1].Value + " ns")
+                continue
+            }
+
+            $tnsMatch = [regex]::Match($line, "^\s*TNS\s*:\s*(.+?)\s*$")
+            if ($tnsMatch.Success -and $currentType) {
+                Write-ReportLine -Label ($currentType + " TNS") -Value ($tnsMatch.Groups[1].Value + " ns")
+            }
+        }
+
+        $fmaxRows = @()
+        $worstSlackLine = $null
+        if (Test-Path $staReportPath) {
+            $currentFmaxModel = $null
+            foreach ($line in Get-Content -LiteralPath $staReportPath) {
+                $fmaxHeaderMatch = [regex]::Match($line, ";\s*(.+? Model) Fmax Summary\s*;")
+                if ($fmaxHeaderMatch.Success) {
+                    $currentFmaxModel = $fmaxHeaderMatch.Groups[1].Value
+                    continue
+                }
+
+                if ($currentFmaxModel) {
+                    $fmaxRowMatch = [regex]::Match($line, ";\s*([^;]+?MHz)\s*;\s*([^;]+?)\s*;\s*([^;]+?)\s*;")
+                    if ($fmaxRowMatch.Success) {
+                        $clockName = $fmaxRowMatch.Groups[3].Value.Trim()
+                        $fmaxValue = $fmaxRowMatch.Groups[1].Value.Trim()
+                        $restrictedFmaxValue = $fmaxRowMatch.Groups[2].Value.Trim()
+                        $fmaxRows += [pscustomobject]@{
+                            Model = $currentFmaxModel
+                            Clock = $clockName
+                            Fmax = $fmaxValue
+                            RestrictedFmax = $restrictedFmaxValue
+                        }
+                        $currentFmaxModel = $null
+                    }
+                    elseif ($line -match "^\s*$") {
+                        $currentFmaxModel = $null
+                    }
+                }
+            }
+
+            $worstSlackLine = Select-String -LiteralPath $staReportPath -Pattern "Worst-case Slack" -SimpleMatch |
+                Select-Object -First 1
+        }
+
+        if ($fmaxRows.Count -gt 0) {
+            Write-Host "Fmax:"
+            foreach ($row in $fmaxRows) {
+                Write-ReportLine -Label ($row.Model + " " + $row.Clock) -Value ($row.Fmax + " (restricted " + $row.RestrictedFmax + ")")
+            }
+        }
+
+        if ($worstSlackLine) {
+            $cells = $worstSlackLine.Line.Trim(" ;") -split "\s*;\s*"
+            if ($cells.Count -ge 6) {
+                Write-Host "Worst-case slack:"
+                Write-ReportLine -Label "Setup" -Value ($cells[1] + " ns")
+                Write-ReportLine -Label "Hold" -Value ($cells[2] + " ns")
+                Write-ReportLine -Label "Recovery" -Value $cells[3]
+                Write-ReportLine -Label "Removal" -Value $cells[4]
+                Write-ReportLine -Label "Minimum Pulse Width" -Value ($cells[5] + " ns")
+            }
+        }
+    }
+    else {
+        Write-Host "Timing slack: not found $staSummaryPath"
+    }
+
+    Write-Host "Full reports:"
+    if (Test-Path $fitReportPath) {
+        Write-ReportLine -Label "Fitter" -Value $fitReportPath
+    }
+    if (Test-Path $staReportPath) {
+        Write-ReportLine -Label "Timing" -Value $staReportPath
+    }
+    Write-Host "=============================================="
+    Write-Host ""
+}
+
 $quartusShExe = Resolve-QuartusTool -ToolName "quartus_sh" -ExplicitPath $QuartusShPath
 $quartusPgmExe = Resolve-QuartusTool -ToolName "quartus_pgm" -ExplicitPath $QuartusPgmPath
 
@@ -187,6 +345,7 @@ if (-not $DownloadOnly) {
         if ($LASTEXITCODE -ne 0) {
             throw "quartus_sh compile failed with exit code $LASTEXITCODE"
         }
+        Write-CompileReportSummary -ProjectDirectory $projectDir -RevisionName $resolvedRevision
     }
     finally {
         Pop-Location

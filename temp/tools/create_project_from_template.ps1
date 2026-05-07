@@ -116,6 +116,29 @@ function Rename-QuartusProject {
     Set-Content -LiteralPath $newQsf -Value $qsfText -Encoding Ascii
 }
 
+function Initialize-GitRepository {
+    param([string]$ProjectRoot)
+
+    $gitDir = Join-Path $ProjectRoot ".git"
+    if (Test-Path -LiteralPath $gitDir) {
+        Write-Host "Git repository already exists:" $ProjectRoot
+        return
+    }
+
+    $gitCommand = Get-Command git -ErrorAction SilentlyContinue
+    if (-not $gitCommand) {
+        Write-Warning "git not found in PATH. Skipping repository initialization."
+        return
+    }
+
+    & $gitCommand.Source -C $ProjectRoot init | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "git init failed for: $ProjectRoot"
+    }
+
+    Write-Host "Initialized git repository:" $ProjectRoot
+}
+
 Test-ProjectName -Name $ProjectName
 
 $templateRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
@@ -138,6 +161,7 @@ else {
 
 Copy-TemplateTree -SourceRoot $templateRoot -DestinationRootPath $newProjectRoot
 Rename-QuartusProject -ProjectRoot $newProjectRoot -Name $ProjectName -Entity $TopEntity
+Initialize-GitRepository -ProjectRoot $newProjectRoot
 
 Write-Host "Created project:" $newProjectRoot
 Write-Host "Quartus project:" (Join-Path $newProjectRoot ("prj\" + $ProjectName + ".qpf"))

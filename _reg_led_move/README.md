@@ -23,6 +23,55 @@
 powershell -ExecutionPolicy Bypass -File .\tools\create_project_from_template.ps1 -ProjectName uart_led
 ```
 
+## 工具入口
+
+为了避免脚本越来越多，推荐统一从 `tools/fpga_tool.bat` 或 `tools/fpga_tool.ps1` 进入。
+
+如果你不想记命令，也可以直接双击：
+
+```text
+tools\fpga_tool_menu.bat
+```
+
+它会弹出一个数字菜单，按编号选择：
+- 编译
+- 临时下载
+- 固化烧录
+- SOF 转 JIC
+- 清理
+- 查看下载线
+
+示例：
+
+```powershell
+tools\fpga_tool.bat help
+```
+
+```powershell
+tools\fpga_tool.bat download
+```
+
+```powershell
+tools\fpga_tool.bat flash -FlashDevice EPCS16
+```
+
+```powershell
+tools\fpga_tool.bat jic -SofPath .\prj\output_files\_reg_led_move.sof
+```
+
+```powershell
+tools\fpga_tool.bat list-cables
+```
+
+建议约定：
+
+- `download` 表示临时下载到 FPGA SRAM
+- `flash` 表示固化烧录到配置 Flash
+- `jic` 表示只做格式转换
+- `clean` 表示清理工程生成文件
+
+旧的脚本仍然保留，方便兼容，但后续日常使用优先走统一入口。
+
 ## SOF 转 JIC
 
 使用 `tools/sof_to_jic.ps1` 可以把 `.sof` 文件转换为 `.jic` 文件。
@@ -56,6 +105,51 @@ powershell -ExecutionPolicy Bypass -File .\tools\sof_to_jic.ps1 -SofPath .\prj\o
 
 如果系统环境变量 `PATH` 中没有 `quartus_cpf.exe`，可以通过 `-CpfPath` 显式指定路径。
 如果脚本无法从 `.qsf` 中识别 FPGA 器件型号，可以通过 `-SflDevice` 显式指定。
+
+## 编译并固化烧录
+
+使用 `tools/compile_program_flash.ps1` 可以完成：
+
+- 编译 Quartus 工程
+- 将生成的 `.sof` 转换为 `.jic`
+- 通过 JTAG 将 `.jic` 烧录到配置 Flash，实现掉电保存
+
+脚本内部会使用 `quartus_pgm` 的 `ipv;<file>.jic` 操作串，先初始化并校验 Flash Loader，再执行固化烧录。
+
+示例：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\compile_program_flash.ps1
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\compile_program_flash.ps1 -Cable "USB-Blaster"
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\compile_program_flash.ps1 -FlashDevice EPCS16 -SflDevice EP4CE10F17C8
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\compile_program_flash.ps1 -ProgramOnly -JicPath .\prj\output_files\_reg_led_move.jic
+```
+
+也可以直接运行：
+
+```text
+tools\compile_program_flash.bat
+```
+
+常用参数：
+
+- `-CompileOnly` 只编译
+- `-ConvertOnly` 只把 `.sof` 转成 `.jic`
+- `-ProgramOnly` 只烧录已有 `.jic`
+- `-ListCables` 列出当前可用下载线
+- `-Cable` 指定下载线名称
+- `-FlashDevice` 指定配置 Flash 型号
+- `-SflDevice` 指定 FPGA 器件型号
+- `-SkipDeviceCheck` 跳过烧录前的 JTAG 器件校验
 
 ## 模板说明
 

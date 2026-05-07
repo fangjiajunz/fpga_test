@@ -1,107 +1,107 @@
 module seg_led (
-    input clk,   // 时钟信号 (假设为 50MHz)
-    input rst_n, // 复位信号（低有效）
+    input clk,      // 时钟信号 (50MHz)
+    input rst_n,    // 复位信号（低有效）
+    input add_flag, // 数码管变化的通知信号
 
-    input            add_flag,  // 数码管变化的通知信号
-    output reg [5:0] seg_sel,   // 数码管位选 (低电平有效)
-    output reg [7:0] seg_led    // 数码管段选 (低电平有效)
+    output reg [5:0] seg_sel,  // 数码管位选 (低电平有效)
+    output reg [7:0] seg_led   // 数码管段选 (低电平有效)
 );
 
     // 参数定义
-    // 50MHz 时钟下，50,000 次计数为 1ms。每个数码管点亮 1ms，刷新足够快且不会闪烁。
-    parameter SCAN_MAX = 16'd50_000;
+    parameter SCAN_MAX = 25'd120_000;  // 1ms @ 50MHz
 
-    // 寄存器定义
-    reg [23:0] disp_data;  // 存储 6 个数码管要显示的数据 (6位 x 4bit)
-    reg [15:0] scan_cnt;  // 动态扫描定时器
-    reg [ 2:0] scan_idx;  // 当前正在扫描的数码管索引 (0~5)
-    reg [ 3:0] current_num;  // 当前数码管需要显示的 4bit 数值
+    // 内部寄存器与线网
+    reg [23:0] disp_data;
+    reg [25:0] scan_cnt;
+    reg [2:0] scan_idx;
 
-    // ==========================================
-    // 1. 数据更新逻辑：当 add_flag 到来时更新数据
-    // ==========================================
+    reg add_flag_d1;  // 用于提取 add_flag 边沿
+    wire add_flag_edge;
+
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            // 复位时，假设初始显示 000000
+            add_flag_d1 <= 1'b0;
+        end else begin
+            add_flag_d1 <= add_flag;
+        end
+    end
+    assign add_flag_edge = add_flag && !add_flag_d1;  // 仅上升沿有效
+
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
             disp_data <= 24'h000000;
-        end else if (add_flag) begin
-            // 每次通知信号到达时，整个 24 位十六进制数值加 1 
-            // （你也可以改成 BCD 码十进制进位逻辑，这里保留十六进制递增）
-            disp_data <= disp_data + 1'b1;
+        end else if (add_flag_edge) begin
+            if (disp_data[3:0] < 4'd9) disp_data[3:0] <= disp_data[3:0] + 1'b1;
+            else begin
+                disp_data[3:0] <= 4'd0;
+                if (disp_data[7:4] < 4'd9) disp_data[7:4] <= disp_data[7:4] + 1'b1;
+                else begin
+                    disp_data[7:4] <= 4'd0;
+                    if (disp_data[11:8] < 4'd9) disp_data[11:8] <= disp_data[11:8] + 1'b1;
+                    else begin
+                        disp_data[11:8] <= 4'd0;
+                        if (disp_data[15:12] < 4'd9) disp_data[15:12] <= disp_data[15:12] + 1'b1;
+                        else begin
+                            disp_data[15:12] <= 4'd0;
+                            if (disp_data[19:16] < 4'd9) disp_data[19:16] <= disp_data[19:16] + 1'b1;
+                            else begin
+                                disp_data[19:16] <= 4'd0;
+                                if (disp_data[23:20] < 4'd9) disp_data[23:20] <= disp_data[23:20] + 1'b1;
+                                else disp_data[23:20] <= 4'd0;  // 溢出清零
+                            end
+                        end
+                    end
+                end
+            end
         end
     end
 
-    // ==========================================
-    // 2. 动态扫描定时器：产生 1ms 的切换脉冲
-    // ==========================================
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            scan_cnt <= 16'd0;
-        end else if (scan_cnt >= SCAN_MAX - 1) begin
-            scan_cnt <= 16'd0;
-        end else begin
-            scan_cnt <= scan_cnt + 1'b1;
-        end
-    end
 
-    // ==========================================
-    // 3. 扫描索引控制：每隔 1ms 切换到下一位数码管
-    // ==========================================
+    wire [3:0] display_dig[5:0];
+
+    // 个位永远显示
+    assign display_dig[0] = disp_data[3:0];
+    // 高位判断：如果当前位及其以上所有高位全为 0，则置为 4'hF (熄灭)
+    assign display_dig[1] = (disp_data[23:4] == 20'd0) ? 4'hF : disp_data[7:4];
+    assign display_dig[2] = (disp_data[23:8] == 16'd0) ? 4'hF : disp_data[11:8];
+    assign display_dig[3] = (disp_data[23:12] == 12'd0) ? 4'hF : disp_data[15:12];
+    assign display_dig[4] = (disp_data[23:16] == 8'd0) ? 4'hF : disp_data[19:16];
+    assign display_dig[5] = (disp_data[23:20] == 4'd0) ? 4'hF : disp_data[23:20];
+
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
+            scan_cnt <= 16'd0;
             scan_idx <= 3'd0;
-        end else if (scan_cnt == SCAN_MAX - 1) begin
-            if (scan_idx == 3'd5) scan_idx <= 3'd0;
-            else scan_idx <= scan_idx + 1'b1;
+        end else begin
+            if (scan_cnt >= SCAN_MAX - 1) begin
+                scan_cnt <= 25'd0;
+                scan_idx <= (scan_idx == 3'd5) ? 3'd0 : scan_idx + 1'b1;
+            end else begin
+                scan_cnt <= scan_cnt + 1'b1;
+            end
         end
     end
 
-    // ==========================================
-    // 4. 位选和数据多路复用器 (Multiplexer)
-    // 根据当前 scan_idx，决定拉低哪个位选，并取出对应的数据
-    // ==========================================
-    always @(*) begin
-        case (scan_idx)
-            3'd0: begin
-                seg_sel     = 6'b111110;
-                current_num = disp_data[3:0];
-            end
-            3'd1: begin
-                seg_sel     = 6'b111101;
-                current_num = disp_data[7:4];
-            end
-            3'd2: begin
-                seg_sel     = 6'b111011;
-                current_num = disp_data[11:8];
-            end
-            3'd3: begin
-                seg_sel     = 6'b110111;
-                current_num = disp_data[15:12];
-            end
-            3'd4: begin
-                seg_sel     = 6'b101111;
-                current_num = disp_data[19:16];
-            end
-            3'd5: begin
-                seg_sel     = 6'b011111;
-                current_num = disp_data[23:20];
-            end
-            default: begin
-                seg_sel     = 6'b111111;
-                current_num = 4'h0;
-            end
-        endcase
-    end
 
-    // ==========================================
-    // 5. 段选译码器：将 current_num 转换为段选信号输出
-    // ==========================================
+    reg [3:0] current_num;
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            seg_led <= 8'b1111_1111;  // 复位时全灭 (假设低电平点亮)
+            seg_sel <= 6'b11_1111;  // 复位时不选通任何位数码管
+            seg_led <= 8'b1111_1111;  // 复位时全灭
         end else begin
+            // 查表法生成位选信号 (左移实现，比 case 更省资源)
+            seg_sel     <= ~(6'b000001 << scan_idx);
+
+            // 获取当前要显示的 4bit 数据
+            current_num <= display_dig[scan_idx];
+
+            // 生成段选信号
             case (current_num)
-                4'h0: seg_led <= 8'b1100_0000;  // 共阳极，0点亮
+                4'h0: seg_led <= 8'b1100_0000;
                 4'h1: seg_led <= 8'b1111_1001;
                 4'h2: seg_led <= 8'b1010_0100;
                 4'h3: seg_led <= 8'b1011_0000;
@@ -111,13 +111,7 @@ module seg_led (
                 4'h7: seg_led <= 8'b1111_1000;
                 4'h8: seg_led <= 8'b1000_0000;
                 4'h9: seg_led <= 8'b1001_0000;
-                4'ha: seg_led <= 8'b1000_1000;
-                4'hb: seg_led <= 8'b1000_0011;
-                4'hc: seg_led <= 8'b1100_0110;
-                4'hd: seg_led <= 8'b1010_0001;
-                4'he: seg_led <= 8'b1000_0110;
-                4'hf: seg_led <= 8'b1000_1110;
-                default: seg_led <= 8'b1111_1111;
+                default: seg_led <= 8'b1111_1111;  // 包含 4'hF (熄灭)
             endcase
         end
     end
