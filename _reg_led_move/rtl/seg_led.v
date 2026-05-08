@@ -31,7 +31,7 @@ module seg_led (
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            disp_data <= 24'h000000;
+            disp_data <= 24'hFFFFFF;
         end else if (add_flag_edge) begin
             if (disp_data[3:0] < 4'd9) disp_data[3:0] <= disp_data[3:0] + 1'b1;
             else begin
@@ -93,7 +93,7 @@ module seg_led (
             seg_sel <= 6'b11_1111;  // 复位时不选通任何位数码管
             seg_led <= 8'b1111_1111;  // 复位时全灭
         end else begin
-            // 查表法生成位选信号 (左移实现，比 case 更省资源)
+            //   左移 不断的实现选中每一个
             seg_sel     <= ~(6'b000001 << scan_idx);
 
             // 获取当前要显示的 4bit 数据
