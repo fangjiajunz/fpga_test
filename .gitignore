@@ -27,3 +27,11 @@
 .idea/
 Thumbs.db
 Desktop.ini
+
+# ModelSim/Questa simulation intermediate files
+**/sim/work/
+**/sim/transcript
+**/sim/*.wlf
+**/sim/*.vcd
+**/sim/*.log
+**/sim/vsim_stacktrace.vstf
