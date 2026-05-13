@@ -8,7 +8,7 @@ module uart_tx #(
     input wire in_flag,
     output reg tx
 );
-
+    //计算计数
     localparam BAUD_CNT_MAX = CLK_FREQ / UART_BPS;
 
     reg [12:0] baud_cnt;
@@ -16,7 +16,7 @@ module uart_tx #(
     reg bit_flag;
     reg [3:0] bit_cnt;
     reg [7:0] data_reg;
-
+    // 计数
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
             baud_cnt <= 13'd0;
@@ -26,7 +26,7 @@ module uart_tx #(
             baud_cnt <= 13'd0;
         end
     end
-
+    //可以发送标志
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
             bit_flag <= 1'b0;
@@ -36,7 +36,7 @@ module uart_tx #(
             bit_flag <= 1'b0;
         end
     end
-
+    //可以开始计数
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
             work_en <= 1'b0;
