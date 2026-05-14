@@ -6,7 +6,8 @@ module uart_tx #(
     input wire sys_rst_n,
     input wire [7:0] in_data,
     input wire in_flag,
-    output reg tx
+    output reg tx,
+    output wire busy
 );
     //计算计数
     localparam BAUD_CNT_MAX = CLK_FREQ / UART_BPS;
@@ -16,6 +17,9 @@ module uart_tx #(
     reg bit_flag;
     reg [3:0] bit_cnt;
     reg [7:0] data_reg;
+
+    assign busy = work_en;
+
     // 计数
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin

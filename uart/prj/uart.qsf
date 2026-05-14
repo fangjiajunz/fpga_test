@@ -138,9 +138,9 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[6]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[7]
 
 # USB UART
-# set_location_assignment PIN_N5 -to uart_rxd
+set_location_assignment PIN_N5 -to uart_rxd
 set_location_assignment PIN_M7 -to uart_txd
-# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to uart_rxd
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to uart_rxd
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to uart_txd
 
 # I2C bus
@@ -220,11 +220,11 @@ set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
 
 
 
-set_global_assignment -name VERILOG_FILE ../rtl/uart/uatr_tx.v
+set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_tx.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_rx.v
-set_global_assignment -name VERILOG_FILE ../rtl/seg_led.v
-set_global_assignment -name VERILOG_FILE ../rtl/top.v
-set_global_assignment -name VERILOG_FILE ../rtl/timer.v
-set_global_assignment -name VERILOG_FILE ../rtl/ax_debounce.v
+set_global_assignment -name VERILOG_FILE ../rtl/display/seg_led.v
+set_global_assignment -name VERILOG_FILE ../rtl/top/top.v
+set_global_assignment -name VERILOG_FILE ../rtl/timer/timer.v
+set_global_assignment -name VERILOG_FILE ../rtl/key/ax_debounce.v
 set_global_assignment -name SDC_FILE system.sdc
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
