@@ -31,8 +31,7 @@ module tb_top_uart_tx;
         .uart_txd (uart_txd)
     );
 
-    defparam dut.uart_tx_inst.UART_BPS = 1000000;
-    defparam dut.uart_rx_inst.UART_BPS = 1000000;
+    defparam dut.u_uart_echo_app.UART_BPS = 1000000;
 
     initial begin
         sys_clk = 1'b0;
