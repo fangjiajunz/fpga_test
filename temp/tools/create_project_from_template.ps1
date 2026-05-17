@@ -31,6 +31,13 @@ function Copy-TemplateTree {
         "prj\simulation"
     )
 
+    $preserveDirs = @(
+        "ip",
+        "ipcore",
+        "prj\ip",
+        "prj\ipcore"
+    )
+
     $skipFiles = @(
         "*.rpt",
         "*.summary",
@@ -49,14 +56,24 @@ function Copy-TemplateTree {
 
     Get-ChildItem -LiteralPath $SourceRoot -Recurse -Force | ForEach-Object {
         $relativePath = $_.FullName.Substring($SourceRoot.Length).TrimStart("\")
+        $isPreservedIpPath = $false
 
-        foreach ($dir in $skipDirs) {
+        foreach ($dir in $preserveDirs) {
             if ($relativePath -eq $dir -or $relativePath.StartsWith($dir + "\")) {
-                return
+                $isPreservedIpPath = $true
+                break
             }
         }
 
-        if (-not $_.PSIsContainer) {
+        if (-not $isPreservedIpPath) {
+            foreach ($dir in $skipDirs) {
+                if ($relativePath -eq $dir -or $relativePath.StartsWith($dir + "\")) {
+                    return
+                }
+            }
+        }
+
+        if (-not $_.PSIsContainer -and -not $isPreservedIpPath) {
             foreach ($pattern in $skipFiles) {
                 if ($_.Name -like $pattern) {
                     return
@@ -161,8 +178,8 @@ else {
 
 Copy-TemplateTree -SourceRoot $templateRoot -DestinationRootPath $newProjectRoot
 Rename-QuartusProject -ProjectRoot $newProjectRoot -Name $ProjectName -Entity $TopEntity
-Initialize-GitRepository -ProjectRoot $newProjectRoot
 
 Write-Host "Created project:" $newProjectRoot
 Write-Host "Quartus project:" (Join-Path $newProjectRoot ("prj\" + $ProjectName + ".qpf"))
 Write-Host "Top entity:" $TopEntity
+Write-Host "Git repository initialization: skipped"

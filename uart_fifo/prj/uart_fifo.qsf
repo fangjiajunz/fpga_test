@@ -1,0 +1,241 @@
+# -------------------------------------------------------------------------- #
+#
+# Copyright (C) 2018  Intel Corporation. All rights reserved.
+# Your use of Intel Corporation's design tools, logic functions 
+# and other software and tools, and its AMPP partner logic 
+# functions, and any output files from any of the foregoing 
+# (including device programming or simulation files), and any 
+# associated documentation or information are expressly subject 
+# to the terms and conditions of the Intel Program License 
+# Subscription Agreement, the Intel Quartus Prime License Agreement,
+# the Intel FPGA IP License Agreement, or other applicable license
+# agreement, including, without limitation, that your use is for
+# the sole purpose of programming logic devices manufactured by
+# Intel and sold by Intel or its authorized distributors.  Please
+# refer to the applicable agreement for further details.
+#
+# -------------------------------------------------------------------------- #
+#
+# Quartus Prime
+# Version 18.1.0 Build 625 09/12/2018 SJ Standard Edition
+# Date created = 16:07:18  May 04, 2026
+#
+# -------------------------------------------------------------------------- #
+#
+# Notes:
+#
+# 1) The default values for assignments are stored in the file:
+#		temp_assignment_defaults.qdf
+#    If this file doesn't exist, see file:
+#		assignment_defaults.qdf
+#
+# 2) Altera recommends that you do not modify this file. This
+#    file is updated automatically by the Quartus Prime software
+#    and any changes you make may be lost or overwritten.
+#
+# -------------------------------------------------------------------------- #
+
+
+set_global_assignment -name FAMILY "Cyclone IV E"
+set_global_assignment -name DEVICE EP4CE10F17C8
+set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION 18.1.0
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:07:18  MAY 04, 2026"
+set_global_assignment -name LAST_QUARTUS_VERSION "18.1.0 Standard Edition"
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
+set_global_assignment -name DEVICE_FILTER_PIN_COUNT 256
+set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 8
+set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 1
+set_global_assignment -name NOMINAL_CORE_SUPPLY_VOLTAGE 1.2V
+
+# -------------------------------------------------------------------------- #
+# Active template pin assignments
+# Board: Cyclone IV E development board
+# -------------------------------------------------------------------------- #
+
+set_location_assignment PIN_M2 -to sys_clk
+
+set_location_assignment PIN_M1 -to sys_rst_n
+
+set_location_assignment PIN_E16 -to key[0]
+set_location_assignment PIN_E15 -to key[1]
+set_location_assignment PIN_M15 -to key[2]
+set_location_assignment PIN_M16 -to key[3]
+set_location_assignment PIN_D11 -to led[0]
+set_location_assignment PIN_C11 -to led[1]
+set_location_assignment PIN_E10 -to led[2]
+set_location_assignment PIN_F9 -to led[3]
+
+# -------------------------------------------------------------------------- #
+# Common board pin assignments
+# Uncomment the pins that match your top-level RTL ports.
+# -------------------------------------------------------------------------- #
+
+# 50 MHz system clock and active-low reset
+# set_location_assignment PIN_M2 -to sys_clk
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sys_clk
+# set_location_assignment PIN_M1 -to sys_rst_n
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sys_rst_n
+
+# Keys
+# set_location_assignment PIN_E16 -to key[0]
+# set_location_assignment PIN_E15 -to key[1]
+# set_location_assignment PIN_M15 -to key[2]
+# set_location_assignment PIN_M16 -to key[3]
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[0]
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[1]
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[2]
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[3]
+
+# LEDs
+# set_location_assignment PIN_D11 -to led[0]
+# set_location_assignment PIN_C11 -to led[1]
+# set_location_assignment PIN_E10 -to led[2]
+# set_location_assignment PIN_F9 -to led[3]
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[0]
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[1]
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[2]
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[3]
+
+# Touch key and buzzer
+# set_location_assignment PIN_F8 -to touch_key
+# set_location_assignment PIN_D12 -to beep
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to touch_key
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to beep
+
+######### 6-digit seven-segment display
+set_location_assignment PIN_N16 -to seg_sel[0]
+set_location_assignment PIN_N15 -to seg_sel[1]
+set_location_assignment PIN_P16 -to seg_sel[2]
+set_location_assignment PIN_P15 -to seg_sel[3]
+set_location_assignment PIN_R16 -to seg_sel[4]
+set_location_assignment PIN_T15 -to seg_sel[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[5]
+
+set_location_assignment PIN_M11 -to seg_led[0]
+set_location_assignment PIN_N12 -to seg_led[1]
+set_location_assignment PIN_C9 -to seg_led[2]
+set_location_assignment PIN_N13 -to seg_led[3]
+set_location_assignment PIN_M10 -to seg_led[4]
+set_location_assignment PIN_N11 -to seg_led[5]
+set_location_assignment PIN_P11 -to seg_led[6]
+set_location_assignment PIN_D9 -to seg_led[7]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[7]
+
+# USB UART
+set_location_assignment PIN_N5 -to uart_rxd
+set_location_assignment PIN_M7 -to uart_txd
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to uart_rxd
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to uart_txd
+
+# I2C bus
+# set_location_assignment PIN_D8 -to iic_scl
+# set_location_assignment PIN_C8 -to iic_sda
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to iic_scl
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to iic_sda
+
+# SDRAM
+# set_location_assignment PIN_B14 -to sdram_clk
+# set_location_assignment PIN_F16 -to sdram_cke
+# set_location_assignment PIN_K10 -to sdram_cs_n
+# set_location_assignment PIN_K11 -to sdram_ras_n
+# set_location_assignment PIN_J12 -to sdram_cas_n
+# set_location_assignment PIN_J13 -to sdram_we_n
+# set_location_assignment PIN_G11 -to sdram_ba[0]
+# set_location_assignment PIN_F13 -to sdram_ba[1]
+# set_location_assignment PIN_J14 -to sdram_dqm[0]
+# set_location_assignment PIN_G15 -to sdram_dqm[1]
+# set_location_assignment PIN_F11 -to sdram_addr[0]
+# set_location_assignment PIN_E11 -to sdram_addr[1]
+# set_location_assignment PIN_D14 -to sdram_addr[2]
+# set_location_assignment PIN_C14 -to sdram_addr[3]
+# set_location_assignment PIN_A14 -to sdram_addr[4]
+# set_location_assignment PIN_A15 -to sdram_addr[5]
+# set_location_assignment PIN_B16 -to sdram_addr[6]
+# set_location_assignment PIN_C15 -to sdram_addr[7]
+# set_location_assignment PIN_C16 -to sdram_addr[8]
+# set_location_assignment PIN_D15 -to sdram_addr[9]
+# set_location_assignment PIN_F14 -to sdram_addr[10]
+# set_location_assignment PIN_D16 -to sdram_addr[11]
+# set_location_assignment PIN_F15 -to sdram_addr[12]
+# set_location_assignment PIN_P14 -to sdram_data[0]
+# set_location_assignment PIN_M12 -to sdram_data[1]
+# set_location_assignment PIN_N14 -to sdram_data[2]
+# set_location_assignment PIN_L12 -to sdram_data[3]
+# set_location_assignment PIN_L13 -to sdram_data[4]
+# set_location_assignment PIN_L14 -to sdram_data[5]
+# set_location_assignment PIN_L11 -to sdram_data[6]
+# set_location_assignment PIN_K12 -to sdram_data[7]
+# set_location_assignment PIN_G16 -to sdram_data[8]
+# set_location_assignment PIN_J11 -to sdram_data[9]
+# set_location_assignment PIN_J16 -to sdram_data[10]
+# set_location_assignment PIN_J15 -to sdram_data[11]
+# set_location_assignment PIN_K16 -to sdram_data[12]
+# set_location_assignment PIN_K15 -to sdram_data[13]
+# set_location_assignment PIN_L16 -to sdram_data[14]
+# set_location_assignment PIN_L15 -to sdram_data[15]
+
+# SD card SPI mode
+# set_location_assignment PIN_K1 -to sd_miso
+# set_location_assignment PIN_J2 -to sd_clk
+# set_location_assignment PIN_C2 -to sd_cs
+# set_location_assignment PIN_D1 -to sd_mosi
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sd_miso
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sd_clk
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sd_cs
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sd_mosi
+
+set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
+set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sys_clk
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sys_rst_n
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[3]
+set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
+
+
+
+
+set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_tx.v
+set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_rx.v
+set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_core.v
+set_global_assignment -name VERILOG_FILE ../rtl/app/uart_echo_app.v
+set_global_assignment -name VERILOG_FILE ../rtl/display/seg_led.v
+set_global_assignment -name VERILOG_FILE ../rtl/top/top.v
+set_global_assignment -name VERILOG_FILE ../rtl/timer/tick_gen.v
+set_global_assignment -name VERILOG_FILE ../rtl/key/ax_debounce.v
+set_global_assignment -name VERILOG_FILE ../rtl/test/fifo_test.v
+set_global_assignment -name SDC_FILE system.sdc
+
+set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim (Verilog)"
+set_global_assignment -name EDA_TIME_SCALE "1 ps" -section_id eda_simulation
+set_global_assignment -name EDA_OUTPUT_DATA_FORMAT "VERILOG HDL" -section_id eda_simulation
+
+
+set_global_assignment -name QIP_FILE ipcore/fifo_8x64.qip
+
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
