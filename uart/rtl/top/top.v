@@ -9,14 +9,23 @@ module top (
     output wire       uart_txd
 );
 
-    wire       tick_1s;
-    wire       tick_20ms;
+    wire tick_1s;
+    wire tick_20ms;
 
-    timer u_timer (
-        .sys_clk          (sys_clk),
-        .sys_rst_n        (sys_rst_n),
-        .led_timer_flag   (tick_1s),
-        .button_timer_flag(tick_20ms)
+    tick_gen #(
+        .MAX_COUNT(50_000_000 - 1)  //1s
+    ) u_tick_1s (
+        .clk  (sys_clk),
+        .rst_n(sys_rst_n),
+        .tick (tick_1s)
+    );
+
+    tick_gen #(
+        .MAX_COUNT(1_000_000 - 1)  //20ms
+    ) u_tick_20ms (
+        .clk  (sys_clk),
+        .rst_n(sys_rst_n),
+        .tick (tick_20ms)
     );
 
     seg_led seg_led_inst (
@@ -28,11 +37,11 @@ module top (
     );
 
     uart_echo_app u_uart_echo_app (
-        .clk      (sys_clk),
-        .rst_n    (sys_rst_n),
-        .uart_rxd (uart_rxd),
-        .uart_txd (uart_txd),
-        .led      (led)
+        .clk     (sys_clk),
+        .rst_n   (sys_rst_n),
+        .uart_rxd(uart_rxd),
+        .uart_txd(uart_txd),
+        .led     (led)
     );
 
 endmodule
