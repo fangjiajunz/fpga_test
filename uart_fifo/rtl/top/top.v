@@ -37,21 +37,21 @@ module top (
         .tick (tick_20ms)
     );
 
-    assign fifo_w_sig = fifo_write_data;
+    // assign fifo_w_sig = fifo_write_data;
 
-    fifo_test u_fifo_test (
-        .sys_clk  (sys_clk),
-        .sys_rst_n(sys_rst_n),
-        .rdreq_sig(rdreq_sig),
-        .wrreq_sig(wrreq_sig),
-        .empty_sig(empty_sig),
-        .full_sig (full_sig),
-        .w_sig    (fifo_w_sig),
-        .q_sig    (fifo_q_sig),
-        .usedw_sig(usedw_sig),
-        .key      (key),
-        .tick_20ms(tick_20ms)
-    );
+    // fifo_test u_fifo_test (
+    //     .sys_clk  (sys_clk),
+    //     .sys_rst_n(sys_rst_n),
+    //     .rdreq_sig(rdreq_sig),
+    //     .wrreq_sig(wrreq_sig),
+    //     .empty_sig(empty_sig),
+    //     .full_sig (full_sig),
+    //     .w_sig    (fifo_w_sig),
+    //     .q_sig    (fifo_q_sig),
+    //     .usedw_sig(usedw_sig),
+    //     .key      (key),
+    //     .tick_20ms(tick_20ms)
+    // );
 
     seg_led seg_led_inst (
         .clk     (sys_clk),
@@ -61,30 +61,29 @@ module top (
         .seg_led (seg_led)
     );
 
-    always @(posedge sys_clk or negedge sys_rst_n) begin
-        if (!sys_rst_n) begin
-            led             <= 4'b0000;
-            fifo_write_data <= 8'h00;
-            rdreq_d1        <= 1'b0;
-        end else begin
-            rdreq_d1 <= rdreq_sig;
+    // always @(posedge sys_clk or negedge sys_rst_n) begin
+    //     if (!sys_rst_n) begin
+    //         led             <= 4'b0000;
+    //         fifo_write_data <= 8'h00;
+    //         rdreq_d1        <= 1'b0;
+    //     end else begin
+    //         rdreq_d1 <= rdreq_sig;
 
-            if (wrreq_sig) begin
-                fifo_write_data <= fifo_write_data + 1'b1;
-            end
+    //         if (wrreq_sig) begin
+    //             fifo_write_data <= fifo_write_data + 1'b1;
+    //         end
 
-            if (rdreq_d1) begin
-                led <= fifo_q_sig[3:0];
-            end
-        end
-    end
+    //         if (rdreq_d1) begin
+    //             led <= fifo_q_sig[3:0];
+    //         end
+    //     end
+    // end
 
-    // uart_echo_app u_uart_echo_app (
-    //     .clk     (sys_clk),
-    //     .rst_n   (sys_rst_n),
-    //     .uart_rxd(uart_rxd),
-    //     .uart_txd(uart_txd),
-    //     .led     (led)
-    // );sssss
+    uart_echo_app u_uart_echo_app (
+        .clk     (sys_clk),
+        .rst_n   (sys_rst_n),
+        .uart_rxd(uart_rxd),
+        .uart_txd(uart_txd)
+    );
 
 endmodule

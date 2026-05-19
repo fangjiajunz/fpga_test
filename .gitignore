@@ -36,3 +36,4 @@ Desktop.ini
 **/sim/*.log
 **/sim/vsim_stacktrace.vstf
 fifo/
+.claude
