@@ -20,6 +20,8 @@ module top (
     wire [5:0] usedw_sig;
     reg  [7:0] fifo_write_data;
     reg        rdreq_d1;
+    wire [7:0] echo_data;
+    wire       echo_valid;
 
     tick_gen #(
         .MAX_COUNT(50_000_000 - 1)  //1s
@@ -79,11 +81,21 @@ module top (
     //     end
     // end
 
+    always @(posedge sys_clk or negedge sys_rst_n) begin
+        if (!sys_rst_n) begin
+            led <= 4'b0000;
+        end else if (echo_valid) begin
+            led <= echo_data[3:0];
+        end
+    end
+
     uart_echo_app u_uart_echo_app (
-        .clk     (sys_clk),
-        .rst_n   (sys_rst_n),
-        .uart_rxd(uart_rxd),
-        .uart_txd(uart_txd)
+        .clk       (sys_clk),
+        .rst_n     (sys_rst_n),
+        .uart_rxd  (uart_rxd),
+        .uart_txd  (uart_txd),
+        .echo_data (echo_data),
+        .echo_valid(echo_valid)
     );
 
 endmodule

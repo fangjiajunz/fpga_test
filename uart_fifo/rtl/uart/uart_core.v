@@ -37,6 +37,7 @@ module uart_core #(
     // ---- RX FIFO ----
     fifo_8x64 u_rx_fifo (
         .clock (clk),
+        .sclr  (~rst_n),  // 同步复位，低电平有效取反
         .data  (rx_raw_data),
         .wrreq (rx_raw_valid),
         .rdreq (rx_rdreq),
@@ -51,10 +52,11 @@ module uart_core #(
     wire       tx_fifo_empty;
     wire       tx_busy;
 
-    // 状态机：保证每次只读一个字节并完整发送，避免连续 rdreq 多读
-    localparam TX_IDLE = 2'd0;  // 等待 FIFO 非空
-    localparam TX_READ = 2'd1;  // 已发 rdreq，下一拍 q 有效
-    localparam TX_SEND = 2'd2;  // 已发 in_flag，等待 uart_tx 发送完成
+    // FIFO 为 show-ahead 模式，q 在 rdreq 前已经是队首数据。
+    // 因此 rdreq 与 uart_tx in_flag 同拍发出，让 uart_tx 锁存被弹出的当前字节。
+    localparam TX_IDLE      = 2'd0;
+    localparam TX_WAIT_BUSY = 2'd1;
+    localparam TX_WAIT_DONE = 2'd2;
 
     reg [1:0] tx_state;
     reg       tx_rdreq;
@@ -71,17 +73,17 @@ module uart_core #(
             case (tx_state)
                 TX_IDLE: begin
                     if (!tx_fifo_empty && !tx_busy) begin
-                        tx_rdreq <= 1'b1;
-                        tx_state <= TX_READ;
+                        tx_rdreq     <= 1'b1;
+                        tx_send_flag <= 1'b1;
+                        tx_state     <= TX_WAIT_BUSY;
                     end
                 end
-                TX_READ: begin
-                    // FIFO q 此时有效，向 uart_tx 发起 in_flag
-                    tx_send_flag <= 1'b1;
-                    tx_state     <= TX_SEND;
+                TX_WAIT_BUSY: begin
+                    if (tx_busy) begin
+                        tx_state <= TX_WAIT_DONE;
+                    end
                 end
-                TX_SEND: begin
-                    // uart_tx busy 在 in_flag 下一拍拉高，此处等待 busy 重新拉低
+                TX_WAIT_DONE: begin
                     if (!tx_busy) begin
                         tx_state <= TX_IDLE;
                     end
@@ -93,6 +95,7 @@ module uart_core #(
 
     fifo_8x64 u_tx_fifo (
         .clock (clk),
+        .sclr  (~rst_n),  // 同步复位，低电平有效取反
         .data  (tx_data),
         .wrreq (tx_wrreq),
         .rdreq (tx_rdreq),

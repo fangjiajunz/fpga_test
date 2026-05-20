@@ -1,12 +1,15 @@
 module uart_echo_app #(
-    parameter UART_BPS = 3000000,
+    parameter UART_BPS = 115200,
     parameter CLK_FREQ = 50_000_000
 ) (
     input wire clk,
     input wire rst_n,
 
     input  wire uart_rxd,
-    output wire uart_txd
+    output wire uart_txd,
+
+    output reg  [7:0] echo_data,
+    output reg        echo_valid
 );
 
     wire [7:0] rx_data;
@@ -34,11 +37,11 @@ module uart_echo_app #(
     );
 
     // RX -> TX echo 状态机：每次只读一个字节并写入 TX FIFO
-    localparam ECHO_IDLE = 2'd0;  // 等待 RX FIFO 非空
-    localparam ECHO_READ = 2'd1;  // 已发 rdreq，下一拍 rx_data 有效
-    localparam ECHO_WRITE = 2'd2;  // 把数据写入 TX FIFO
+    // show-ahead FIFO：q 始终显示头部数据，rdreq 用于弹出并更新 q
+    localparam ECHO_IDLE = 1'd0;  // 等待 RX FIFO 非空
+    localparam ECHO_SEND = 1'd1;  // 采样 rx_data 并发 rdreq 弹出
 
-    reg [1:0] echo_state;
+    reg echo_state;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -46,24 +49,26 @@ module uart_echo_app #(
             rx_rdreq   <= 1'b0;
             tx_wrreq   <= 1'b0;
             tx_data    <= 8'h00;
+            echo_data  <= 8'h00;
+            echo_valid <= 1'b0;
         end else begin
             rx_rdreq <= 1'b0;
             tx_wrreq <= 1'b0;
+            echo_valid <= 1'b0;
             case (echo_state)
                 ECHO_IDLE: begin
                     if (!rx_empty && !tx_full) begin
-                        rx_rdreq   <= 1'b1;
-                        echo_state <= ECHO_READ;
+                        // show-ahead：rx_data 已经是 FIFO 头部数据，先采样
+                        tx_data    <= rx_data;
+                        echo_data  <= rx_data;
+                        rx_rdreq   <= 1'b1;  // 发 rdreq 弹出，下一拍 q 更新
+                        echo_state <= ECHO_SEND;
                     end
                 end
-                ECHO_READ: begin
-                    // 等一拍：普通 FIFO 在 rdreq 后下一拍 q 才更新
-                    echo_state <= ECHO_WRITE;
-                end
-                ECHO_WRITE: begin
-                    // 此时 rx_data 才是本次真正读出的字节
-                    tx_data    <= rx_data;
+                ECHO_SEND: begin
+                    // 写入 TX FIFO
                     tx_wrreq   <= 1'b1;
+                    echo_valid <= 1'b1;
                     echo_state <= ECHO_IDLE;
                 end
                 default: echo_state <= ECHO_IDLE;
