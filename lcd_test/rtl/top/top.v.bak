@@ -13,7 +13,7 @@ module top (
     output wire        lcd_de,   // 数据使能
     output wire        lcd_hs,   // 行同步
     output wire        lcd_vs,   // 场同步
-    inout  wire [15:0] lcd_rgb   // RGB565 数据
+    output wire [15:0] lcd_rgb   // RGB565 数据
 );
 
     wire tick_1s;
