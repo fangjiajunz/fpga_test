@@ -1,6 +1,6 @@
 module lcd_colorbar (
-    input  wire        clk,    // 50MHz 系统时钟
-    input  wire        rst_n,  // 全局复位，低有效
+    input wire clk,   // 50MHz 系统时钟
+    input wire rst_n, // 全局复位，低有效
 
     output wire        lcd_bl,   // 背光控制
     output wire        lcd_clk,  // 像素时钟
@@ -8,22 +8,22 @@ module lcd_colorbar (
     output wire        lcd_de,   // 数据使能
     output wire        lcd_hs,   // 行同步
     output wire        lcd_vs,   // 场同步
-    inout wire [15:0] lcd_rgb   // RGB565 数据
+    inout  wire [15:0] lcd_rgb   // RGB565 数据
 );
 
     // ======================================================
     // 模块间互联信号
     // ======================================================
-    wire        lcd_pclk;     // clk_div 生成的像素时钟
-    wire [15:0] lcd_id;       // rd_id 识别出的屏幕型号
-    wire [15:0] pixel_data;   // lcd_display 产生的像素数据
-    wire [10:0] pixel_xpos;   // 当前请求像素的列坐标
-    wire [10:0] pixel_ypos;   // 当前请求像素的行坐标
-    wire [10:0] h_disp;       // 有效显示区宽度
-    wire [10:0] v_disp;       // 有效显示区高度
-    wire        data_req;     // driver 输出，本封装内部不外接
-    wire [15:0] lcd_rgb_o;    // FPGA 输出到屏的像素数据
-    wire [15:0] lcd_rgb_i;    // 从 lcd_rgb 总线读回的数据（用于读 ID）
+    wire        lcd_pclk;  // clk_div 生成的像素时钟
+    wire [15:0] lcd_id;  // rd_id 识别出的屏幕型号
+    wire [15:0] pixel_data;  // lcd_display 产生的像素数据
+    wire [10:0] pixel_xpos;  // 当前请求像素的列坐标
+    wire [10:0] pixel_ypos;  // 当前请求像素的行坐标
+    wire [10:0] h_disp;  // 有效显示区宽度
+    wire [10:0] v_disp;  // 有效显示区高度
+    wire        data_req;  // driver 输出，本封装内部不外接
+    wire [15:0] lcd_rgb_o;  // FPGA 输出到屏的像素数据
+    wire [15:0] lcd_rgb_i;  // 从 lcd_rgb 总线读回的数据（用于读 ID）
 
     // ======================================================
     // lcd_rgb 双向切换（参考正点原子 25_lcd_rgb_colorbar）：

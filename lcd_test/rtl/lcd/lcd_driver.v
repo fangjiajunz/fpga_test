@@ -1,23 +1,23 @@
 module lcd_driver (
-    input  wire        lcd_pclk,
-    input  wire        rst_n,
-    input  wire [15:0] lcd_id,
-    input  wire [15:0] pixel_data,
-    output reg  [10:0] pixel_xpos,
-    output reg  [10:0] pixel_ypos,
-    output reg  [10:0] h_disp,
-    output reg  [10:0] v_disp,
-    output reg         data_req,
+    input  wire        lcd_pclk,    // 像素时钟（由 clk_div 提供）
+    input  wire        rst_n,       // 全局复位，低有效
+    input  wire [15:0] lcd_id,      // LCD 屏幕 ID，决定使用哪套时序参数
+    input  wire [15:0] pixel_data,  // 来自 lcd_display 的像素数据（RGB565）
+    output reg  [10:0] pixel_xpos,  // 输出给 lcd_display 的像素列坐标
+    output reg  [10:0] pixel_ypos,  // 输出给 lcd_display 的像素行坐标
+    output reg  [10:0] h_disp,      // 水平有效显示区宽度
+    output reg  [10:0] v_disp,      // 垂直有效显示区高度
+    output reg         data_req,    // 数据请求信号（提前 2 拍）
 
-    output reg         lcd_de,
-    output wire        lcd_hs,
-    output wire        lcd_vs,
-    output wire        lcd_bl,
-    output wire        lcd_clk,
-    output wire        lcd_rst,
-    output wire [15:0] lcd_rgb
+    output reg         lcd_de,   // 数据使能信号
+    output wire        lcd_hs,   // 行同步（DE 模式下恒为高）
+    output wire        lcd_vs,   // 场同步（DE 模式下恒为高）
+    output wire        lcd_bl,   // 背光控制（恒开启）
+    output wire        lcd_clk,  // 像素时钟输出
+    output wire        lcd_rst,  // LCD 复位（跟随 rst_n）
+    output wire [15:0] lcd_rgb   // RGB565 数据输出
 );
-
+    //  |←SYNC→|←BACK→|←──────DISP──────→|←FRONT→|
     // 支持的 RGB LCD 屏幕时序参数。
     // ID 沿用开发板例程格式，例如 4342 表示 4.3 寸 480x272。
     localparam [10:0] H_SYNC_4342 = 11'd41;
@@ -64,20 +64,23 @@ module lcd_driver (
     localparam [10:0] V_BACK_4384 = 11'd33;
     localparam [10:0] V_DISP_4384 = 11'd480;
     localparam [10:0] V_TOTAL_4384 = 11'd525;
-
+    // 当前使用的行时序参数
     reg [10:0] h_sync;
     reg [10:0] h_back;
     reg [10:0] h_total;
+    // 当前使用的场时序参数
     reg [10:0] v_sync;
     reg [10:0] v_back;
     reg [10:0] v_total;
+    // 行计数器（0 ~ h_total-1）
     reg [10:0] h_cnt;
+    // 场计数器（0 ~ v_total-1）
     reg [10:0] v_cnt;
 
     // data_req 比 lcd_de 提前两个像素时钟拉高，
     // 便于显示模块在下一拍输出对应的 pixel_data。
-    wire active_line;
-    wire active_pixel_req;
+    wire active_line;  // 垂直有效显示区
+    wire active_pixel_req;  // 是否需要请求像素数据
 
     // RGB LCD 使用 DE 模式驱动，行场同步信号保持高电平。
     assign lcd_hs = 1'b1;
