@@ -281,7 +281,7 @@ set_global_assignment -name VERILOG_FILE ../rtl/lcd/clk_div.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/rd_id.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_driver.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_display.v
-set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_colorbar.v
+set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_top.v
 set_global_assignment -name SDC_FILE system.sdc
 
 set_global_assignment -name QIP_FILE ipcore/fifo_ip/fifo_8x64.qip

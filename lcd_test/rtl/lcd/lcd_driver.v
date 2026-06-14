@@ -19,7 +19,7 @@ module lcd_driver (
 );
     //  |←SYNC→|←BACK→|←──────DISP──────→|←FRONT→|
     // 支持的 RGB LCD 屏幕时序参数。
-    // ID 沿用开发板例程格式，例如 4342 表示 4.3 寸 480x272。
+
     localparam [10:0] H_SYNC_4342 = 11'd41;
     localparam [10:0] H_BACK_4342 = 11'd2;
     localparam [10:0] H_DISP_4342 = 11'd480;
@@ -97,7 +97,7 @@ module lcd_driver (
                            && active_line;
 
     always @(*) begin
-        // 未知 ID 默认使用 4.3 寸 480x272 时序。
+        // 未知 ID 默认使用 4.3 寸 800*480 时序 7084
         case (lcd_id)
             16'h7084: begin
                 h_sync  = H_SYNC_7084;
@@ -140,14 +140,14 @@ module lcd_driver (
                 v_total = V_TOTAL_4384;
             end
             default: begin
-                h_sync  = H_SYNC_4342;
-                h_back  = H_BACK_4342;
-                h_disp  = H_DISP_4342;
-                h_total = H_TOTAL_4342;
-                v_sync  = V_SYNC_4342;
-                v_back  = V_BACK_4342;
-                v_disp  = V_DISP_4342;
-                v_total = V_TOTAL_4342;
+                h_sync  = H_SYNC_7084;
+                h_back  = H_BACK_7084;
+                h_disp  = H_DISP_7084;
+                h_total = H_TOTAL_7084;
+                v_sync  = V_SYNC_7084;
+                v_back  = V_BACK_7084;
+                v_disp  = V_DISP_7084;
+                v_total = V_TOTAL_7084;
             end
         endcase
     end

@@ -42,7 +42,7 @@ module top (
     );
 
     // RGB LCD 彩条显示子系统
-    lcd_colorbar u_lcd_colorbar (
+    lcd_top u_lcd_top (
         .clk    (sys_clk),
         .rst_n  (sys_rst_n),
         .lcd_bl (lcd_bl),
