@@ -1,6 +1,6 @@
 module lcd_top (
-    input  wire        clk,    // 50MHz 系统时钟
-    input  wire        rst_n,  // 全局复位，低有效
+    input wire clk,   // 50MHz 系统时钟
+    input wire rst_n, // 全局复位，低有效
 
     output wire        lcd_bl,   // 背光控制
     output wire        lcd_clk,  // 像素时钟
