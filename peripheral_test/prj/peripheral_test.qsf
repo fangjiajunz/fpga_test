@@ -249,6 +249,16 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to lcd_rgb[0]
 # set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sd_cs
 # set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sd_mosi
 
+# SPI 接口引脚约束
+set_location_assignment PIN_D1 -to spi_cs_n
+set_location_assignment PIN_F3 -to spi_sclk
+set_location_assignment PIN_F1 -to spi_mosi
+set_location_assignment PIN_F2 -to spi_miso
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to spi_cs_n
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to spi_sclk
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to spi_mosi
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to spi_miso
+
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
@@ -276,6 +286,8 @@ set_global_assignment -name VERILOG_FILE ../rtl/app/uart_echo_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/display/seg_led.v
 set_global_assignment -name VERILOG_FILE ../rtl/top/top.v
 set_global_assignment -name VERILOG_FILE ../rtl/timer/tick_gen.v
+set_global_assignment -name VERILOG_FILE ../rtl/spi/spi_phy/spi_phy.v
+set_global_assignment -name VERILOG_FILE ../rtl/spi/spi_phy/spi_master_top.v
 set_global_assignment -name VERILOG_FILE ../rtl/key/ax_debounce.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/clk_div.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/rd_id.v
