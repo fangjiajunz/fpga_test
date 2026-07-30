@@ -249,15 +249,22 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to lcd_rgb[0]
 # set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sd_cs
 # set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sd_mosi
 
-# SPI 接口引脚约束
-set_location_assignment PIN_D1 -to spi_cs_n
-set_location_assignment PIN_F3 -to spi_sclk
-set_location_assignment PIN_F1 -to spi_mosi
-set_location_assignment PIN_F2 -to spi_miso
+# SPI 接口引脚约束（EPCS）
+set_location_assignment PIN_D2 -to spi_cs_n
+set_location_assignment PIN_H1 -to spi_sclk
+set_location_assignment PIN_C1 -to spi_mosi
+set_location_assignment PIN_H2 -to spi_miso
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to spi_cs_n
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to spi_sclk
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to spi_mosi
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to spi_miso
+
+# EPCS 引脚复用：配置完成后释放为普通 I/O
+set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "Use as regular IO"
+set_global_assignment -name RESERVE_DATA1_AFTER_CONFIGURATION "Use as regular IO"
+set_global_assignment -name RESERVE_FLASH_NCE_AFTER_CONFIGURATION "Use as regular IO"
+set_global_assignment -name RESERVE_DCLK_AFTER_CONFIGURATION "Use as regular IO"
+set_global_assignment -name RESERVE_DATA0_AFTER_CONFIGURATION "Use as regular IO"
 
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
