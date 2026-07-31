@@ -2,28 +2,50 @@
 
 ## 项目结构与模块组织
 
-本仓库包含多个 Quartus Prime FPGA 工程，目标器件主要是 Intel Cyclone IV E `EP4CE10F17C8`。
+本仓库当前只有一个 Quartus Prime FPGA 工程 `peripheral_test/`，目标器件是 Intel Cyclone IV E `EP4CE10F17C8`。
 
-- `uart/`：当前 UART 回显工程，采用分层结构：`rtl/top/` 负责板级连接，`rtl/app/` 放应用逻辑，`rtl/uart/` 放 UART 收发与封装，`rtl/timer/` 放 tick 发生器。
-- `uart_fifo/`：基于 UART 工程扩展的 FIFO/IP 验证工程，IP 文件位于 `prj/ipcore/`。
-- `_reg_led_move/`、`temp/`：示例或模板工程。
-- 每个工程通常包含 `prj/`、`rtl/`、`sim/`、`doc/`、`tools/`。
+- `peripheral_test/prj/`：Quartus 工程文件（`peripheral_test.qpf`、`peripheral_test.qsf`、`system.sdc`）与 IP（`ipcore/fifo_ip`、`ipcore/rom`）。
+- `peripheral_test/rtl/`：按外设/功能分目录的 RTL。
+  - `top/`：`top.v`，只做板级引脚连接和模块例化。
+  - `app/`：应用逻辑，如 `uart_echo_app.v`。
+  - `uart/`：UART 收发与封装，`uart_core.v`、`uart_tx.v`、`uart_rx.v`。
+  - `spi/spi_phy/`：SPI 物理层与主控，`spi_phy.v`、`spi_master_top.v`。
+  - `lcd/`：LCD 驱动与显示，`lcd_driver.v`、`lcd_top.v`、`lcd_colorbar.v`、`clk_div.v` 等。
+  - `timer/`：`timer.v`、`tick_gen.v`。
+  - `key/`：按键消抖 `ax_debounce.v`。
+  - `display/`：数码管 `seg_led.v`。
+  - `test/`：验证用模块，如 `fifo_test.v`。
+- `peripheral_test/sim/`：测试平台，`tb_top_uart_tx.v`、`tb_temp.v`。
+- `peripheral_test/tools/`：编译、下载、固化、清理、建工程脚本。
+- `peripheral_test/doc/`：开发板 IO 引脚分配表等硬件资料。
+
+新增工程时沿用相同布局：`prj/`、`rtl/`、`sim/`、`doc/`、`tools/`。
 
 设计时遵循高内聚、低耦合：协议模块只处理协议，应用模块处理业务，`top.v` 只做板级引脚连接和模块例化。
 
 ## 构建、测试与开发命令
 
-在具体工程目录下执行脚本，例如进入 `uart/` 或 `uart_fifo/`：
+在工程目录 `peripheral_test/` 下执行脚本：
 
 - `tools\compile_download.bat`：编译并临时下载 `.sof` 到 FPGA。
 - `powershell -ExecutionPolicy Bypass -File .\tools\compile_program_flash.ps1 -CompileOnly`：只编译工程。
 - `powershell -ExecutionPolicy Bypass -File .\tools\compile_program_flash.ps1 -FlashDevice EPCS16 -SflDevice EP4CE10F17C8`：编译、生成 `.jic` 并固化 Flash。
 - `tools\clean_project.bat`：清理 Quartus 生成文件。
 
-本机 Quartus Prime Standard Edition 18.1 安装在 `D:\interfpga\Quartus`，命令行工具目录为 `D:\interfpga\Quartus\quartus\bin64`。ModelSim 目录为 `D:\interfpga\Modelsim\win64`。若 PATH 未刷新，可直接使用完整路径：
+Quartus Prime Standard Edition 18.1 的安装路径在不同开发机上不一致，已知两套环境：
+
+| 环境 | Quartus 命令行工具目录 | ModelSim 目录 |
+| --- | --- | --- |
+| 机器 A | `D:\interfpga\Quartus\quartus\bin64` | `D:\interfpga\Modelsim\win64` |
+| 机器 B | `D:\intelFPGA\18.1\quartus\bin64` | `D:\intelFPGA\modusim\win64` |
+
+`tools/` 下的脚本会按「PATH → 卸载注册表 InstallLocation → 常见安装根目录（含递归查找）」的顺序自动定位工具，两套环境都能命中，因此正常情况下无需手工指定路径。若探测失败，用脚本的显式路径参数（如 `-CpfPath`）覆盖。
+
+需要手工调用命令行工具时，先确认本机实际路径，不要照抄下面的示例：
 
 ```powershell
-D:\interfpga\Quartus\quartus\bin64\quartus_sh.exe --flow compile uart -c uart
+# 机器 B 示例
+D:\intelFPGA\18.1\quartus\bin64\quartus_sh.exe --flow compile peripheral_test -c peripheral_test
 ```
 
 ## 代码风格与命名规范
