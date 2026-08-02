@@ -260,11 +260,11 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to spi_mosi
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to spi_miso
 
 # EPCS 引脚复用：配置完成后释放为普通 I/O
-set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "Use as regular IO"
-set_global_assignment -name RESERVE_DATA1_AFTER_CONFIGURATION "Use as regular IO"
-set_global_assignment -name RESERVE_FLASH_NCE_AFTER_CONFIGURATION "Use as regular IO"
-set_global_assignment -name RESERVE_DCLK_AFTER_CONFIGURATION "Use as regular IO"
-set_global_assignment -name RESERVE_DATA0_AFTER_CONFIGURATION "Use as regular IO"
+set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "USE AS REGULAR IO"
+set_global_assignment -name RESERVE_DATA1_AFTER_CONFIGURATION "USE AS REGULAR IO"
+set_global_assignment -name RESERVE_FLASH_NCE_AFTER_CONFIGURATION "USE AS REGULAR IO"
+set_global_assignment -name RESERVE_DCLK_AFTER_CONFIGURATION "USE AS REGULAR IO"
+set_global_assignment -name RESERVE_DATA0_AFTER_CONFIGURATION "USE AS REGULAR IO"
 
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
@@ -295,6 +295,8 @@ set_global_assignment -name VERILOG_FILE ../rtl/top/top.v
 set_global_assignment -name VERILOG_FILE ../rtl/timer/tick_gen.v
 set_global_assignment -name VERILOG_FILE ../rtl/spi/spi_phy/spi_phy.v
 set_global_assignment -name VERILOG_FILE ../rtl/spi/spi_phy/spi_master_top.v
+set_global_assignment -name VERILOG_FILE ../rtl/flash/w25q16_ctrl.v
+set_global_assignment -name VERILOG_FILE ../rtl/app/flash_test_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/key/ax_debounce.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/clk_div.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/rd_id.v
@@ -314,6 +316,8 @@ set_global_assignment -name EDA_OUTPUT_DATA_FORMAT "VERILOG HDL" -section_id eda
 
 set_global_assignment -name MIF_FILE ipcore/rom/rom_test.mif
 set_global_assignment -name QIP_FILE ipcore/rom/rom_256x8.qip
+
+
 
 
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
