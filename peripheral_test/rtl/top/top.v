@@ -16,6 +16,27 @@ module top (
 );
 
     // ================================================================
+    // 复位同步：异步复位、同步释放
+    // 直接把按键 sys_rst_n 当异步复位用，松开时刻和 sys_clk 无关，会带来
+    // recovery/removal 时序违例。这里同步两拍后产生内部的 rst_n，全设计统一使用。
+    // ================================================================
+
+    reg rst_n_sync_1;
+    reg rst_n_sync_2;
+
+    always @(posedge sys_clk or negedge sys_rst_n) begin
+        if (!sys_rst_n) begin
+            rst_n_sync_1 <= 1'b0;
+            rst_n_sync_2 <= 1'b0;
+        end else begin
+            rst_n_sync_1 <= 1'b1;
+            rst_n_sync_2 <= rst_n_sync_1;
+        end
+    end
+
+    wire rst_n = rst_n_sync_2;
+
+    // ================================================================
     // 1 秒脉冲
     // ================================================================
 
@@ -25,7 +46,7 @@ module top (
         .MAX_COUNT(50_000_000 - 1)
     ) u_tick_1s (
         .clk  (sys_clk),
-        .rst_n(sys_rst_n),
+        .rst_n(rst_n),
         .tick (tick_1s)
     );
 
@@ -33,11 +54,24 @@ module top (
     // UART 回环
     // ================================================================
 
+    // UART 状态调试信号，keep 属性便于在 Quartus SignalTap 中查找。
+    // rx_overflow / rx_frame_error 都是 sticky 的：置位表示曾经因为 RX FIFO
+    // 满丢过字节 / 收到过停止位为低的帧，需要复位（或由上层给对应的 clr）
+    // 才能清掉。
+    (* keep = "true" *) wire uart_rx_full;
+    (* keep = "true" *) wire uart_rx_overflow;
+    (* keep = "true" *) wire uart_rx_frame_error;
+
     uart_echo_app u_uart_echo_app (
-        .clk     (sys_clk),
-        .rst_n   (sys_rst_n),
-        .uart_rxd(uart_rxd),
-        .uart_txd(uart_txd)
+        .clk              (sys_clk),
+        .rst_n            (rst_n),
+        .uart_rxd         (uart_rxd),
+        .uart_txd         (uart_txd),
+        .rx_full          (uart_rx_full),
+        .rx_overflow      (uart_rx_overflow),
+        .rx_frame_error   (uart_rx_frame_error),
+        .rx_overflow_clr  (1'b0),
+        .rx_frame_err_clr (1'b0)
     );
 
     // ================================================================
@@ -63,7 +97,7 @@ module top (
 
     flash_test_app u_flash_test_app (
         .clk            (sys_clk),
-        .rst_n          (sys_rst_n),
+        .rst_n          (rst_n),
         .tick_1s        (tick_1s),
 
         .flash_start    (flash_start),
@@ -96,7 +130,7 @@ module top (
 
     w25q16_ctrl u_w25q16_ctrl (
         .clk           (sys_clk),
-        .rst_n         (sys_rst_n),
+        .rst_n         (rst_n),
 
         .start         (flash_start),
         .operation     (flash_operation),
@@ -131,7 +165,7 @@ module top (
         .LSB_FIRST  (1'b0)
     ) u_spi_master_top (
         .sys_clk  (sys_clk),
-        .sys_rst_n(sys_rst_n),
+        .sys_rst_n(rst_n),
 
         // 不能再固定为 8'd1；读取 ID 需要连续传输 4 字节。
         .burst_len(spi_burst_len),

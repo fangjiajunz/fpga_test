@@ -8,6 +8,13 @@ module uart_echo_app #(
     input  wire uart_rxd,
     output wire uart_txd,
 
+    // RX FIFO 状态（用于调试/监控）
+    output wire rx_full,           // RX FIFO 满
+    output wire rx_overflow,       // sticky：有字节因为 RX FIFO 满被丢弃
+    output wire rx_frame_error,    // sticky：收到过停止位不是高的帧
+    input  wire rx_overflow_clr,   // 高电平清 rx_overflow
+    input  wire rx_frame_err_clr,  // 高电平清 rx_frame_error
+
     output reg  [7:0] echo_data,
     output reg        echo_valid
 );
@@ -24,20 +31,29 @@ module uart_echo_app #(
         .UART_BPS(UART_BPS),
         .CLK_FREQ(CLK_FREQ)
     ) u_uart_core (
-        .clk     (clk),
-        .rst_n   (rst_n),
-        .rxd     (uart_rxd),
-        .txd     (uart_txd),
-        .rx_data (rx_data),
-        .rx_empty(rx_empty),
-        .rx_rdreq(rx_rdreq),
-        .tx_data (tx_data),
-        .tx_wrreq(tx_wrreq),
-        .tx_full (tx_full)
+        .clk               (clk),
+        .rst_n             (rst_n),
+        .rxd               (uart_rxd),
+        .txd               (uart_txd),
+        .rx_data           (rx_data),
+        .rx_empty          (rx_empty),
+        .rx_full           (rx_full),
+        .rx_overflow       (rx_overflow),
+        .rx_frame_error    (rx_frame_error),
+        .rx_overflow_clr   (rx_overflow_clr),
+        .rx_frame_err_clr  (rx_frame_err_clr),
+        .rx_rdreq          (rx_rdreq),
+        .tx_data           (tx_data),
+        .tx_wrreq          (tx_wrreq),
+        .tx_full           (tx_full)
     );
 
     // RX -> TX echo 状态机：每次只读一个字节并写入 TX FIFO
     // show-ahead FIFO：q 始终显示头部数据，rdreq 用于弹出并更新 q
+    //
+    // 注意：TX FIFO 满的时候本状态机不再读 RX FIFO，如果上位机一直不收，
+    // RX FIFO 迟早会满并开始丢字节，此时 uart_core 的 rx_overflow 会置位。
+    // 这是背压的必然结果（没有地方可以再缓存），但至少不再是静默丢数据。
     localparam ECHO_IDLE = 1'd0;  // 等待 RX FIFO 非空
     localparam ECHO_SEND = 1'd1;  // 采样 rx_data 并发 rdreq 弹出
 
