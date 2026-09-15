@@ -144,6 +144,10 @@ set_location_assignment PIN_M7 -to uart_txd
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to uart_rxd
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to uart_txd
 
+# LED（板载 led[0]，top 端口名为 led，要扩成 4 位就把端口改成 led[3:0]）
+set_location_assignment PIN_D11 -to led
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led
+
 # RGB TFT-LCD 引脚约束
 set_location_assignment PIN_R1 -to lcd_bl
 set_location_assignment PIN_T2 -to lcd_de
@@ -290,6 +294,7 @@ set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_tx.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_rx.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_core.v
 set_global_assignment -name VERILOG_FILE ../rtl/app/uart_echo_app.v
+set_global_assignment -name VERILOG_FILE ../rtl/app/led_ctrl_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/display/seg_led.v
 set_global_assignment -name VERILOG_FILE ../rtl/top/top.v
 set_global_assignment -name VERILOG_FILE ../rtl/timer/tick_gen.v
