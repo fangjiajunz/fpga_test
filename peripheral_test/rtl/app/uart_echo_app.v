@@ -9,14 +9,14 @@ module uart_echo_app #(
     output wire uart_txd,
 
     // RX FIFO 状态（用于调试/监控）
-    output wire rx_full,           // RX FIFO 满
-    output wire rx_overflow,       // sticky：有字节因为 RX FIFO 满被丢弃
-    output wire rx_frame_error,    // sticky：收到过停止位不是高的帧
-    input  wire rx_overflow_clr,   // 高电平清 rx_overflow
-    input  wire rx_frame_err_clr,  // 高电平清 rx_frame_error
+    output wire rx_full,          // RX FIFO 满
+    output wire rx_overflow,      // sticky：有字节因为 RX FIFO 满被丢弃
+    output wire rx_frame_error,   // sticky：收到过停止位不是高的帧
+    input  wire rx_overflow_clr,  // 高电平清 rx_overflow
+    input  wire rx_frame_err_clr, // 高电平清 rx_frame_error
 
-    output reg  [7:0] echo_data,
-    output reg        echo_valid
+    output reg [7:0] echo_data,
+    output reg       echo_valid
 );
 
     wire [7:0] rx_data;
@@ -31,21 +31,21 @@ module uart_echo_app #(
         .UART_BPS(UART_BPS),
         .CLK_FREQ(CLK_FREQ)
     ) u_uart_core (
-        .clk               (clk),
-        .rst_n             (rst_n),
-        .rxd               (uart_rxd),
-        .txd               (uart_txd),
-        .rx_data           (rx_data),
-        .rx_empty          (rx_empty),
-        .rx_full           (rx_full),
-        .rx_overflow       (rx_overflow),
-        .rx_frame_error    (rx_frame_error),
-        .rx_overflow_clr   (rx_overflow_clr),
-        .rx_frame_err_clr  (rx_frame_err_clr),
-        .rx_rdreq          (rx_rdreq),
-        .tx_data           (tx_data),
-        .tx_wrreq          (tx_wrreq),
-        .tx_full           (tx_full)
+        .clk             (clk),
+        .rst_n           (rst_n),
+        .rxd             (uart_rxd),
+        .txd             (uart_txd),
+        .rx_data         (rx_data),
+        .rx_empty        (rx_empty),
+        .rx_full         (rx_full),
+        .rx_overflow     (rx_overflow),
+        .rx_frame_error  (rx_frame_error),
+        .rx_overflow_clr (rx_overflow_clr),
+        .rx_frame_err_clr(rx_frame_err_clr),
+        .rx_rdreq        (rx_rdreq),
+        .tx_data         (tx_data),
+        .tx_wrreq        (tx_wrreq),
+        .tx_full         (tx_full)
     );
 
     // RX -> TX echo 状态机：每次只读一个字节并写入 TX FIFO
@@ -68,8 +68,8 @@ module uart_echo_app #(
             echo_data  <= 8'h00;
             echo_valid <= 1'b0;
         end else begin
-            rx_rdreq <= 1'b0;
-            tx_wrreq <= 1'b0;
+            rx_rdreq   <= 1'b0;
+            tx_wrreq   <= 1'b0;
             echo_valid <= 1'b0;
             case (echo_state)
                 ECHO_IDLE: begin
