@@ -1,4 +1,4 @@
-module led_ctrl_app (
+module uart_app (
     input wire clk,
     input wire rst_n,
 
@@ -6,9 +6,13 @@ module led_ctrl_app (
     input  wire [7:0] rx_data,
     input  wire       rx_empty,
     output reg        rx_rdreq,
-
+    // 连接 uart_core TX FIFO 接口
+    output reg  [7:0] tx_data,
+    output reg        tx_wrreq,
     // 4 位 LED 输出
-    output reg [3:0] led
+    output reg  [3:0] led,
+    input  wire [3:0] key
+
 );
 
     localparam FRAME_HEAD = 8'h5A;
@@ -79,4 +83,41 @@ module led_ctrl_app (
         end
     end
 
+    //tx
+    wire tick_20ms;
+    wire u_btn_edge;
+    reg [7:0] _tx_data;
+
+    tick_gen #(
+        .MAX_COUNT(1_000_000 - 1)
+    ) u_tick_1s (
+        .clk  (clk),
+        .rst_n(rst_n),
+        .tick (tick_20ms)
+    );
+    //     input  wire sys_clk,
+    // input  wire sys_rst_n,
+    // input  wire btn_in,
+    // input  wire timer_tick,
+    // output reg  btn_edge
+    ax_debounce u_ax_debounce (
+        .sys_clk   (clk),
+        .sys_rst_n (rst_n),
+        .btn_in    (key[0]),
+        .timer_tick(tick_20ms),
+        .btn_edge  (u_btn_edge)
+    );
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            tx_data  <= 8'h00;  // 修正：8'h00
+            tx_wrreq <= 1'b0;
+        end else begin
+            tx_wrreq <= 1'b0;  // 默认拉低，只产生 1 拍脉冲
+            if (u_btn_edge) begin
+                tx_data  <= tx_data + 1'b1;  // 数据递增
+                tx_wrreq <= 1'b1;  // 修正：拉高 1 拍，写入 TX FIFO 发送
+            end
+        end
+    end
 endmodule

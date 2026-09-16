@@ -38,6 +38,7 @@
 
 set_global_assignment -name FAMILY "Cyclone IV E"
 set_global_assignment -name DEVICE EP4CE10F17C8
+set_global_assignment -name FAMILY "Cyclone IV E"
 set_global_assignment -name TOP_LEVEL_ENTITY top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 18.1.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:07:18  MAY 04, 2026"
@@ -82,24 +83,24 @@ set_location_assignment PIN_M1 -to sys_rst_n
 # set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sys_rst_n
 
 # Keys
-# set_location_assignment PIN_E16 -to key[0]
-# set_location_assignment PIN_E15 -to key[1]
-# set_location_assignment PIN_M15 -to key[2]
-# set_location_assignment PIN_M16 -to key[3]
-# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[0]
-# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[1]
-# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[2]
-# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[3]
+set_location_assignment PIN_E16 -to key[0]
+set_location_assignment PIN_E15 -to key[1]
+set_location_assignment PIN_M15 -to key[2]
+set_location_assignment PIN_M16 -to key[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to key[3]
 
 # LEDs
-# set_location_assignment PIN_D11 -to led[0]
-# set_location_assignment PIN_C11 -to led[1]
-# set_location_assignment PIN_E10 -to led[2]
-# set_location_assignment PIN_F9 -to led[3]
-# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[0]
-# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[1]
-# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[2]
-# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[3]
+set_location_assignment PIN_D11 -to led[0]
+set_location_assignment PIN_C11 -to led[1]
+set_location_assignment PIN_E10 -to led[2]
+set_location_assignment PIN_F9 -to led[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[3]
 
 # Touch key and buzzer
 # set_location_assignment PIN_F8 -to touch_key
@@ -108,35 +109,35 @@ set_location_assignment PIN_M1 -to sys_rst_n
 # set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to beep
 
 ######### 6-digit seven-segment display
-set_location_assignment PIN_N16 -to seg_sel[0]
-set_location_assignment PIN_N15 -to seg_sel[1]
-set_location_assignment PIN_P16 -to seg_sel[2]
-set_location_assignment PIN_P15 -to seg_sel[3]
-set_location_assignment PIN_R16 -to seg_sel[4]
-set_location_assignment PIN_T15 -to seg_sel[5]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[0]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[1]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[2]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[3]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[4]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[5]
+##set_location_assignment PIN_N16 -to seg_sel[0]
+##set_location_assignment PIN_N15 -to seg_sel[1]
+##set_location_assignment PIN_P16 -to seg_sel[2]
+##set_location_assignment PIN_P15 -to seg_sel[3]
+##set_location_assignment PIN_R16 -to seg_sel[4]
+##set_location_assignment PIN_T15 -to seg_sel[5]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[0]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[1]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[2]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[3]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[4]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_sel[5]
 
-set_location_assignment PIN_M11 -to seg_led[0]
-set_location_assignment PIN_N12 -to seg_led[1]
-set_location_assignment PIN_C9 -to seg_led[2]
-set_location_assignment PIN_N13 -to seg_led[3]
-set_location_assignment PIN_M10 -to seg_led[4]
-set_location_assignment PIN_N11 -to seg_led[5]
-set_location_assignment PIN_P11 -to seg_led[6]
-set_location_assignment PIN_D9 -to seg_led[7]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[0]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[1]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[2]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[3]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[4]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[5]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[6]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[7]
+##set_location_assignment PIN_M11 -to seg_led[0]
+##set_location_assignment PIN_N12 -to seg_led[1]
+##set_location_assignment PIN_C9 -to seg_led[2]
+##set_location_assignment PIN_N13 -to seg_led[3]
+##set_location_assignment PIN_M10 -to seg_led[4]
+##set_location_assignment PIN_N11 -to seg_led[5]
+##set_location_assignment PIN_P11 -to seg_led[6]
+##set_location_assignment PIN_D9 -to seg_led[7]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[0]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[1]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[2]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[3]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[4]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[5]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[6]
+##set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to seg_led[7]
 
 # USB UART
 set_location_assignment PIN_N5 -to uart_rxd
@@ -144,9 +145,7 @@ set_location_assignment PIN_M7 -to uart_txd
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to uart_rxd
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to uart_txd
 
-# LED（板载 led[0]，top 端口名为 led，要扩成 4 位就把端口改成 led[3:0]）
-set_location_assignment PIN_D11 -to led
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led
+
 
 # RGB TFT-LCD 引脚约束
 set_location_assignment PIN_R1 -to lcd_bl
@@ -290,11 +289,26 @@ set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
 
 
 
+#set_global_assignment -name VERILOG_FILE ../rtl/app/led_ctrl_app.v
+#set_global_assignment -name VERILOG_FILE ../rtl/app/uart_app.v
+
+
+set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim (Verilog)"
+set_global_assignment -name EDA_TIME_SCALE "1 ps" -section_id eda_simulation
+set_global_assignment -name EDA_OUTPUT_DATA_FORMAT "VERILOG HDL" -section_id eda_simulation
+
+
+
+
+
+
+
+
+set_global_assignment -name VERILOG_FILE ../rtl/app/uart_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_tx.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_rx.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_core.v
 set_global_assignment -name VERILOG_FILE ../rtl/app/uart_echo_app.v
-set_global_assignment -name VERILOG_FILE ../rtl/app/led_ctrl_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/display/seg_led.v
 set_global_assignment -name VERILOG_FILE ../rtl/top/top.v
 set_global_assignment -name VERILOG_FILE ../rtl/timer/tick_gen.v
@@ -309,20 +323,7 @@ set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_driver.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_display.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_top.v
 set_global_assignment -name SDC_FILE system.sdc
-
 set_global_assignment -name QIP_FILE ipcore/fifo_ip/fifo_8x64.qip
-
-set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim (Verilog)"
-set_global_assignment -name EDA_TIME_SCALE "1 ps" -section_id eda_simulation
-set_global_assignment -name EDA_OUTPUT_DATA_FORMAT "VERILOG HDL" -section_id eda_simulation
-
-
-
-
 set_global_assignment -name MIF_FILE ipcore/rom/rom_test.mif
 set_global_assignment -name QIP_FILE ipcore/rom/rom_256x8.qip
-
-
-
-
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
