@@ -1,78 +1,36 @@
+// ==============================================================================
+// 模块名称 : uart_app
+// 模块功能 : 业务应用层 (Application Layer)
+//   - 接收来自协议层 (decode) 的命令包，控制板载 LED
+//   - 将协议层解出的有效数据流打入 TX FIFO 进行流式转发
+//   - 响应板载按键，产生递增数据并通过 TX 发送 (与数据流完成仲裁)
+// ==============================================================================
+
 module uart_app (
     input wire clk,
     input wire rst_n,
 
-    // 连接 uart_core RX FIFO 接口
-    input  wire [7:0] rx_data,
-    input  wire       rx_empty,
-    output reg        rx_rdreq,
+    // 协议解析层输入接口 (来自 decode)
+    input  wire        data_out_valid,
+    input  wire [7:0]  data_out,
+    input  wire [16:0] data_out_addr,
+    input  wire [7:0]  packet_type,
+    input  wire [16:0] packet_len,
+    input  wire        packet_done,
+    input  wire        packet_error,
+    input  wire        check_ok,
 
-    // 连接 uart_core TX FIFO 接口
-    output reg  [7:0] tx_data,
-    output reg        tx_wrreq,
+    // 物理层 TX FIFO 发送接口 (去往 uart_core)
+    output reg  [7:0]  tx_data,
+    output reg         tx_wrreq,
 
-    // 4 位 LED 输出
-    output reg  [3:0] led,
-    input  wire [3:0] key
+    // 板载外设接口
+    output reg  [3:0]  led,
+    input  wire [3:0]  key
 );
 
     // -------------------------------------------------------------------------
-    // 1. FIFO 读驱动：解耦 show-ahead 延迟
-    // -------------------------------------------------------------------------
-    reg [7:0] rx_byte;
-    reg       rx_byte_valid;
-    reg       read_gap;
-
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            rx_rdreq      <= 1'b0;
-            rx_byte       <= 8'h00;
-            rx_byte_valid <= 1'b0;
-            read_gap      <= 1'b0;
-        end else begin
-            rx_rdreq      <= 1'b0;
-            rx_byte_valid <= 1'b0;
-
-            if (read_gap) begin
-                read_gap <= 1'b0;
-            end else if (!rx_empty) begin
-                rx_rdreq      <= 1'b1;
-                rx_byte       <= rx_data;
-                rx_byte_valid <= 1'b1;
-                read_gap      <= 1'b1;
-            end
-        end
-    end
-
-    // -------------------------------------------------------------------------
-    // 2. 协议解码模块例化与信号声明
-    // -------------------------------------------------------------------------
-    wire        data_out_valid;
-    wire [7:0]  data_out;
-    wire [16:0] data_out_addr;
-    wire [7:0]  packet_type;
-    wire [16:0] packet_len;
-    wire        packet_done;
-    wire        packet_error;
-    wire        check_ok;
-
-    decode u_decode (
-        .sys_clk       (clk),
-        .sys_rst_n     (rst_n),
-        .in_data       (rx_byte),
-        .data_ready    (rx_byte_valid),
-        .data_out_valid(data_out_valid),
-        .data_out      (data_out),
-        .data_out_addr (data_out_addr),
-        .packet_type   (packet_type),
-        .packet_len    (packet_len),
-        .packet_done   (packet_done),
-        .packet_error  (packet_error),
-        .check_ok      (check_ok)
-    );
-
-    // -------------------------------------------------------------------------
-    // 3. 业务逻辑：根据命令包解码结果控制 LED
+    // 1. 业务逻辑：根据命令包解码结果控制 LED
     // -------------------------------------------------------------------------
     reg [3:0] temp_led;
 
@@ -94,7 +52,7 @@ module uart_app (
     end
 
     // -------------------------------------------------------------------------
-    // 4. 按键防抖检测
+    // 2. 按键防抖检测
     // -------------------------------------------------------------------------
     wire tick_20ms;
     wire u_btn_edge;
@@ -116,7 +74,7 @@ module uart_app (
     );
 
     // -------------------------------------------------------------------------
-    // 5. 串口发送驱动：支持解码数据流转发与按键递增发送 (仲裁输出)
+    // 3. 串口发送驱动：支持解码数据流转发与按键递增发送 (仲裁输出)
     // -------------------------------------------------------------------------
     reg [7:0] btn_tx_cnt;
     reg       btn_tx_pending;
