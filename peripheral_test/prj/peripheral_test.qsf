@@ -36,7 +36,6 @@
 # -------------------------------------------------------------------------- #
 
 
-set_global_assignment -name FAMILY "Cyclone IV E"
 set_global_assignment -name DEVICE EP4CE10F17C8
 set_global_assignment -name FAMILY "Cyclone IV E"
 set_global_assignment -name TOP_LEVEL_ENTITY top
@@ -303,7 +302,7 @@ set_global_assignment -name EDA_OUTPUT_DATA_FORMAT "VERILOG HDL" -section_id eda
 
 
 
-
+set_global_assignment -name VERILOG_FILE ../rtl/app/decode.v
 set_global_assignment -name VERILOG_FILE ../rtl/app/uart_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_tx.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_rx.v

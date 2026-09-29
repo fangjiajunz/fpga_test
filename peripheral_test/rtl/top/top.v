@@ -52,14 +52,6 @@ module top (
         .tick (tick_1s)
     );
 
-    // ================================================================
-    // UART 控制 LED
-    // ================================================================
-
-    // UART 状态调试信号，keep 属性便于在 Quartus SignalTap 中查找。
-    // rx_overflow / rx_frame_error 都是 sticky 的：置位表示曾经因为 RX FIFO
-    // 满丢过字节 / 收到过停止位为低的帧，需要复位（或由上层给对应的 clr）
-    // 才能清掉。
     (* keep = "true" *)wire       uart_rx_full;
     (* keep = "true" *)wire       uart_rx_overflow;
     (* keep = "true" *)wire       uart_rx_frame_error;

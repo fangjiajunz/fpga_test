@@ -6,17 +6,15 @@ module uart_app (
     input  wire [7:0] rx_data,
     input  wire       rx_empty,
     output reg        rx_rdreq,
+
     // 连接 uart_core TX FIFO 接口
     output reg  [7:0] tx_data,
     output reg        tx_wrreq,
+
     // 4 位 LED 输出
     output reg  [3:0] led,
     input  wire [3:0] key
-
 );
-
-    localparam FRAME_HEAD = 8'h5A;
-    localparam FRAME_TAIL = 8'hA5;
 
     // -------------------------------------------------------------------------
     // 1. FIFO 读驱动：解耦 show-ahead 延迟
@@ -47,59 +45,68 @@ module uart_app (
     end
 
     // -------------------------------------------------------------------------
+    // 2. 协议解码模块例化与信号声明
     // -------------------------------------------------------------------------
-    localparam STATE_IDLE = 2'd0;  // 等待帧头 5A
-    localparam STATE_DATA = 2'd1;  // 暂存目标状态 XX
-    localparam STATE_TAIL = 2'd2;  // 校验帧尾 A5
+    wire        data_out_valid;
+    wire [7:0]  data_out;
+    wire [16:0] data_out_addr;
+    wire [7:0]  packet_type;
+    wire [16:0] packet_len;
+    wire        packet_done;
+    wire        packet_error;
+    wire        check_ok;
 
-    reg [1:0] state;
+    decode u_decode (
+        .sys_clk       (clk),
+        .sys_rst_n     (rst_n),
+        .in_data       (rx_byte),
+        .data_ready    (rx_byte_valid),
+        .data_out_valid(data_out_valid),
+        .data_out      (data_out),
+        .data_out_addr (data_out_addr),
+        .packet_type   (packet_type),
+        .packet_len    (packet_len),
+        .packet_done   (packet_done),
+        .packet_error  (packet_error),
+        .check_ok      (check_ok)
+    );
+
+    // -------------------------------------------------------------------------
+    // 3. 业务逻辑：根据命令包解码结果控制 LED
+    // -------------------------------------------------------------------------
     reg [3:0] temp_led;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            state    <= STATE_IDLE;
             temp_led <= 4'b0000;
             led      <= 4'b0000;
-        end else if (rx_byte_valid) begin
-            case (state)
-                STATE_IDLE: begin
-                    if (rx_byte == FRAME_HEAD) state <= STATE_DATA;
-                end
+        end else begin
+            // 收到命令包 (TYPE=0x00) 的第 0 字节时，暂存 LED 目标值
+            if (data_out_valid && (packet_type == 8'h00) && (data_out_addr == 17'd0)) begin
+                temp_led <= data_out[3:0];
+            end
 
-                STATE_DATA: begin
-                    temp_led <= rx_byte[3:0];  // 存下这 4 位的目标亮灭值
-                    state    <= STATE_TAIL;
-                end
-
-                STATE_TAIL: begin
-                    if (rx_byte == FRAME_TAIL) begin
-                        led <= temp_led;  // 校验成功，直接直写生效！
-                    end
-                    state <= STATE_IDLE;
-                end
-
-                default: state <= STATE_IDLE;
-            endcase
+            // 整包接收完毕且校验通过时，将目标值正式更新到 LED
+            if (packet_done && check_ok && (packet_type == 8'h00)) begin
+                led <= temp_led;
+            end
         end
     end
 
-    //tx
+    // -------------------------------------------------------------------------
+    // 4. 按键防抖检测
+    // -------------------------------------------------------------------------
     wire tick_20ms;
     wire u_btn_edge;
-    reg [7:0] _tx_data;
 
     tick_gen #(
-        .MAX_COUNT(1_000_000 - 1)
-    ) u_tick_1s (
+        .MAX_COUNT(26'd999_999)  // 50MHz 时钟下产生 20ms 定时脉冲
+    ) u_tick_20ms (
         .clk  (clk),
         .rst_n(rst_n),
         .tick (tick_20ms)
     );
-    //     input  wire sys_clk,
-    // input  wire sys_rst_n,
-    // input  wire btn_in,
-    // input  wire timer_tick,
-    // output reg  btn_edge
+
     ax_debounce u_ax_debounce (
         .sys_clk   (clk),
         .sys_rst_n (rst_n),
@@ -108,16 +115,37 @@ module uart_app (
         .btn_edge  (u_btn_edge)
     );
 
+    // -------------------------------------------------------------------------
+    // 5. 串口发送驱动：支持解码数据流转发与按键递增发送 (仲裁输出)
+    // -------------------------------------------------------------------------
+    reg [7:0] btn_tx_cnt;
+    reg       btn_tx_pending;
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            tx_data  <= 8'h00;  // 修正：8'h00
-            tx_wrreq <= 1'b0;
+            tx_data        <= 8'h00;
+            tx_wrreq       <= 1'b0;
+            btn_tx_cnt     <= 8'h00;
+            btn_tx_pending <= 1'b0;
         end else begin
-            tx_wrreq <= 1'b0;  // 默认拉低，只产生 1 拍脉冲
+            tx_wrreq <= 1'b0;  // 默认拉低
+
+            // 按键按下时使发送计数值累加，并标记有待发送按键事件
             if (u_btn_edge) begin
-                tx_data  <= tx_data + 1'b1;  // 数据递增
-                tx_wrreq <= 1'b1;  // 修正：拉高 1 拍，写入 TX FIFO 发送
+                btn_tx_cnt     <= btn_tx_cnt + 1'b1;
+                btn_tx_pending <= 1'b1;
+            end
+
+            // 发送通道仲裁：解码数据优先流式发出；空闲时处理按键发送
+            if (data_out_valid) begin
+                tx_data  <= data_out;
+                tx_wrreq <= 1'b1;
+            end else if (btn_tx_pending) begin
+                tx_data        <= btn_tx_cnt;
+                tx_wrreq       <= 1'b1;
+                btn_tx_pending <= 1'b0;
             end
         end
     end
+
 endmodule
