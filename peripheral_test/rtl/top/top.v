@@ -1,4 +1,7 @@
-module top (
+module top #(
+    parameter UART_BPS = 115200,
+    parameter CLK_FREQ = 50_000_000
+) (
     input wire sys_clk,
     input wire sys_rst_n,
 
@@ -50,35 +53,35 @@ module top (
 
     // ================================================================
     // 【第 1 层：物理驱动层 PHY / Driver】
-    // UART 核心收发驱动 (含 64 字节 RX/TX FIFO)
+    // UART 核心收发驱动 (含 64 字节 RX/TX FIFO 及自动读驱动)
     // ================================================================
+    (* keep = "true" *) wire uart_rx_empty;
     (* keep = "true" *) wire uart_rx_full;
     (* keep = "true" *) wire uart_rx_overflow;
     (* keep = "true" *) wire uart_rx_frame_error;
 
     wire [7:0] uart_rx_data;
-    wire       uart_rx_empty;
-    wire       uart_rx_rdreq;
+    wire       uart_rx_valid;
 
     wire [7:0] uart_tx_data;
     wire       uart_tx_wrreq;
 
     uart_core #(
-        .UART_BPS(115200),
-        .CLK_FREQ(50_000_000)
+        .UART_BPS(UART_BPS),
+        .CLK_FREQ(CLK_FREQ)
     ) u_uart_core (
         .clk             (sys_clk),
         .rst_n           (rst_n),
         .rxd             (uart_rxd),
         .txd             (uart_txd),
         .rx_data         (uart_rx_data),
+        .rx_valid        (uart_rx_valid),
         .rx_empty        (uart_rx_empty),
         .rx_full         (uart_rx_full),
         .rx_overflow     (uart_rx_overflow),
         .rx_frame_error  (uart_rx_frame_error),
         .rx_overflow_clr (1'b0),
         .rx_frame_err_clr(1'b0),
-        .rx_rdreq        (uart_rx_rdreq),
 
         .tx_data         (uart_tx_data),
         .tx_wrreq        (uart_tx_wrreq),
@@ -87,7 +90,7 @@ module top (
 
     // ================================================================
     // 【第 2 层：协议解析层 Protocol / Framing Layer】
-    // decode 模块：直连 RX FIFO，负责帧同步、拆包与流式分发
+    // decode 模块：纯粹的协议流解码器，负责帧同步、拆包与流式分发
     // ================================================================
     wire        data_out_valid;
     wire [7:0]  data_out;
@@ -101,9 +104,8 @@ module top (
     decode u_decode (
         .sys_clk       (sys_clk),
         .sys_rst_n     (rst_n),
-        .rx_data       (uart_rx_data),
-        .rx_empty      (uart_rx_empty),
-        .rx_rdreq      (uart_rx_rdreq),
+        .in_data       (uart_rx_data),
+        .data_ready    (uart_rx_valid),
         .data_out_valid(data_out_valid),
         .data_out      (data_out),
         .data_out_addr (data_out_addr),

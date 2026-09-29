@@ -4,10 +4,9 @@ module decode (
     input  wire        sys_clk,
     input  wire        sys_rst_n,
 
-    // 输入 FIFO 接口 (直接连接 uart_core RX FIFO)
-    input  wire [7:0]  rx_data,
-    input  wire        rx_empty,
-    output reg         rx_rdreq,
+    // 输入数据流 (标准流式接口，完全与底层存储介质解耦)
+    input  wire [7:0]  in_data,
+    input  wire        data_ready,
 
     // 数据流式输出接口 (命令与大数据均统一由此接口输出)
     output reg         data_out_valid,
@@ -21,34 +20,6 @@ module decode (
     output reg         packet_error,
     output reg         check_ok
 );
-
-    // ==========================================================================
-    // 内部 FIFO 读驱动：解耦 show-ahead 延迟，生成稳定的单拍数据流
-    // ==========================================================================
-    reg [7:0] in_data;
-    reg       data_ready;
-    reg       read_gap;
-
-    always @(posedge sys_clk or negedge sys_rst_n) begin
-        if (!sys_rst_n) begin
-            rx_rdreq   <= 1'b0;
-            in_data    <= 8'h00;
-            data_ready <= 1'b0;
-            read_gap   <= 1'b0;
-        end else begin
-            rx_rdreq   <= 1'b0;
-            data_ready <= 1'b0;
-
-            if (read_gap) begin
-                read_gap <= 1'b0;
-            end else if (!rx_empty) begin
-                rx_rdreq   <= 1'b1;
-                in_data    <= rx_data;
-                data_ready <= 1'b1;
-                read_gap   <= 1'b1;
-            end
-        end
-    end
 
     // ==========================================================================
     // 常量与参数定义

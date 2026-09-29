@@ -14,15 +14,15 @@ module uart_core #(
     input  wire rxd,
     output wire txd,
 
-    // RX FIFO 接口
-    output wire [7:0] rx_data,          // 读出的数据（rdreq 后下一拍有效）
+    // RX 接收流接口 (内部自动从 RX FIFO 读出为稳定字节流)
+    output reg  [7:0] rx_data,          // 接收到的数据字节
+    output reg        rx_valid,         // 数据有效指示（单拍高电平脉冲）
     output wire       rx_empty,         // RX FIFO 空标志
     output wire       rx_full,          // RX FIFO 满标志
     output reg        rx_overflow,      // sticky：因 RX FIFO 满而丢弃了字节
     output reg        rx_frame_error,   // sticky：收到过停止位不是高的帧
     input  wire       rx_overflow_clr,  // 高电平清 rx_overflow
     input  wire       rx_frame_err_clr, // 高电平清 rx_frame_error
-    input  wire       rx_rdreq,         // 读请求
 
     // TX FIFO 接口
     input  wire [7:0] tx_data,   // 写入的数据
@@ -51,18 +51,44 @@ module uart_core #(
     // FIFO 满时直接屏蔽 wrreq（scfifo 满时本身也会忽略写入），丢掉的字节
     // 记在 rx_overflow 里，这样溢出不会再是静默的。
     wire rx_fifo_wrreq = rx_raw_valid & ~rx_full;
+    wire [7:0] rx_fifo_q;
+    reg        rx_fifo_rdreq;
+    reg        rx_read_gap;
 
     fifo_8x64 u_rx_fifo (
         .clock (clk),
         .sclr  (~rst_n),  // 同步复位，低电平有效取反
         .data  (rx_raw_data),
         .wrreq (rx_fifo_wrreq),
-        .rdreq (rx_rdreq),
+        .rdreq (rx_fifo_rdreq),
         .empty (rx_empty),
         .full  (rx_full),
-        .q     (rx_data),
+        .q     (rx_fifo_q),
         .usedw ()
     );
+
+    // ---- RX FIFO 自动读驱动 ----
+    // 内部自动解耦 FIFO show-ahead 延迟，向外部（协议层）提供标准的单拍有效字节流 (rx_data, rx_valid)
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            rx_fifo_rdreq <= 1'b0;
+            rx_data       <= 8'h00;
+            rx_valid      <= 1'b0;
+            rx_read_gap   <= 1'b0;
+        end else begin
+            rx_fifo_rdreq <= 1'b0;
+            rx_valid      <= 1'b0;
+
+            if (rx_read_gap) begin
+                rx_read_gap <= 1'b0;
+            end else if (!rx_empty) begin
+                rx_fifo_rdreq <= 1'b1;
+                rx_data       <= rx_fifo_q;
+                rx_valid      <= 1'b1;
+                rx_read_gap   <= 1'b1;
+            end
+        end
+    end
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin

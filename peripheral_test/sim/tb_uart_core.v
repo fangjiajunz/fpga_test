@@ -27,13 +27,13 @@ module tb_uart_core;
     wire       tx_full;
 
     wire [7:0] rx_data;
+    wire       rx_valid;
     wire       rx_empty;
     wire       rx_full;
     wire       rx_overflow;
     wire       rx_frame_error;
     reg        rx_overflow_clr;
     reg        rx_frame_err_clr;
-    reg        rx_rdreq;
 
     reg  [7:0] tx_payload [0:3];
     reg  [7:0] rx_got;
@@ -42,6 +42,20 @@ module tb_uart_core;
 
     integer i;
     integer j;
+
+    reg [7:0] rx_stream_buf [0:255];
+    reg [7:0] rx_stream_wrptr;
+    reg [7:0] rx_stream_rdptr;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            rx_stream_wrptr <= 8'd0;
+            rx_stream_rdptr <= 8'd0;
+        end else if (rx_valid) begin
+            rx_stream_buf[rx_stream_wrptr] <= rx_data;
+            rx_stream_wrptr <= rx_stream_wrptr + 1'b1;
+        end
+    end
 
     uart_core #(
         .UART_BPS(1000000),
@@ -52,13 +66,13 @@ module tb_uart_core;
         .rxd              (rxd),
         .txd              (txd),
         .rx_data          (rx_data),
+        .rx_valid         (rx_valid),
         .rx_empty         (rx_empty),
         .rx_full          (rx_full),
         .rx_overflow      (rx_overflow),
         .rx_frame_error   (rx_frame_error),
         .rx_overflow_clr  (rx_overflow_clr),
         .rx_frame_err_clr (rx_frame_err_clr),
-        .rx_rdreq         (rx_rdreq),
         .tx_data          (tx_data),
         .tx_wrreq         (tx_wrreq),
         .tx_full          (tx_full)
@@ -90,7 +104,6 @@ module tb_uart_core;
         rst_n            = 1'b0;
         tx_data          = 8'h00;
         tx_wrreq         = 1'b0;
-        rx_rdreq         = 1'b0;
         rx_overflow_clr  = 1'b0;
         rx_frame_err_clr = 1'b0;
         #(CLK_PERIOD * 10);
@@ -159,8 +172,8 @@ module tb_uart_core;
         for (i = 0; i <= BAUD_CYCLES - 1; i = i + 1) begin
             send_byte_glitch(8'hff, 0, i, GLITCH_MAX);
             wait_rx_not_empty;
-            if (rx_data !== 8'hff) begin
-                $display("  FAIL glitch at offset %0d: got 0x%02h", i, rx_data);
+            if (rx_stream_buf[rx_stream_rdptr] !== 8'hff) begin
+                $display("  FAIL glitch at offset %0d: got 0x%02h", i, rx_stream_buf[rx_stream_rdptr]);
                 glitch_fail = glitch_fail + 1;
             end
             pop_rx_byte;
@@ -315,22 +328,22 @@ module tb_uart_core;
             done = 1'b0;
             for (n = 0; (n < 4000) && !done; n = n + 1) begin
                 @(posedge clk);
-                if (!rx_empty) done = 1'b1;
+                if (rx_stream_wrptr != rx_stream_rdptr) done = 1'b1;
             end
             if (!done) begin
-                $display("FAIL: rx fifo stayed empty");
+                $display("FAIL: rx stream buffer empty timeout");
                 sim_stop;
             end
         end
     endtask
 
-    // 弹出队首。show-ahead FIFO，q 一直是队首，给一拍 rdreq 就把它弹掉。
+    // 弹出队首
     task pop_rx_byte;
         begin
             @(posedge clk);
-            rx_rdreq <= 1'b1;
-            @(posedge clk);
-            rx_rdreq <= 1'b0;
+            if (rx_stream_wrptr != rx_stream_rdptr) begin
+                rx_stream_rdptr <= rx_stream_rdptr + 1'b1;
+            end
             @(posedge clk);
         end
     endtask
@@ -339,10 +352,12 @@ module tb_uart_core;
     task expect_rx_byte;
         input [7:0]   expected;
         input [127:0] tag;
+        reg   [7:0]   actual;
         begin
             wait_rx_not_empty;
-            if (rx_data !== expected) begin
-                $display("FAIL %0s: expected 0x%02h, got 0x%02h", tag, expected, rx_data);
+            actual = rx_stream_buf[rx_stream_rdptr];
+            if (actual !== expected) begin
+                $display("FAIL %0s: expected 0x%02h, got 0x%02h", tag, expected, actual);
                 sim_stop;
             end
             pop_rx_byte;
