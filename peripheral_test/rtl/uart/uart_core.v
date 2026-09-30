@@ -48,12 +48,14 @@ module uart_core #(
     );
 
     // ---- RX FIFO ----
-    // FIFO 满时直接屏蔽 wrreq（scfifo 满时本身也会忽略写入），丢掉的字节
-    // 记在 rx_overflow 里，这样溢出不会再是静默的。
-    wire rx_fifo_wrreq = rx_raw_valid & ~rx_full;
+    // 1. 读写隔离：写端仅在接收到物理层有效字节且 FIFO 未满时发起写入
+    wire       rx_fifo_wrreq = rx_raw_valid & ~rx_full;
     wire [7:0] rx_fifo_q;
-    reg        rx_fifo_rdreq;
-    reg        rx_read_gap;
+    wire       rx_fifo_rdreq;
+
+    // 2. Show-Ahead 模式规范：读使能必须用组合逻辑产生，且必须判断空状态 (!rx_empty)
+    // 只要 FIFO 非空，在当前时钟上升沿立即弹出当前数据，由下级寄存器锁存输出
+    assign rx_fifo_rdreq = !rx_empty;
 
     fifo_8x64 u_rx_fifo (
         .clock (clk),
@@ -67,25 +69,17 @@ module uart_core #(
         .usedw ()
     );
 
-    // ---- RX FIFO 自动读驱动 ----
-    // 内部自动解耦 FIFO show-ahead 延迟，向外部（协议层）提供标准的单拍有效字节流 (rx_data, rx_valid)
+    // ---- RX FIFO 自动读驱动 (标准单拍有效流式输出) ----
+    // Show-Ahead 模式下，当 rx_fifo_rdreq 有效时，本拍 rx_fifo_q 已经就绪
+    // 时钟上升沿锁存当前数据并对外指示有效 (rx_valid)
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            rx_fifo_rdreq <= 1'b0;
-            rx_data       <= 8'h00;
-            rx_valid      <= 1'b0;
-            rx_read_gap   <= 1'b0;
+            rx_data  <= 8'h00;
+            rx_valid <= 1'b0;
         end else begin
-            rx_fifo_rdreq <= 1'b0;
-            rx_valid      <= 1'b0;
-
-            if (rx_read_gap) begin
-                rx_read_gap <= 1'b0;
-            end else if (!rx_empty) begin
-                rx_fifo_rdreq <= 1'b1;
-                rx_data       <= rx_fifo_q;
-                rx_valid      <= 1'b1;
-                rx_read_gap   <= 1'b1;
+            rx_valid <= rx_fifo_rdreq;
+            if (rx_fifo_rdreq) begin
+                rx_data <= rx_fifo_q;
             end
         end
     end
@@ -119,66 +113,51 @@ module uart_core #(
     wire       tx_fifo_empty;
     wire       tx_busy;
     wire       tx_in_ready;
+    wire       tx_fifo_rdreq;
 
-    // uart_tx.in_data 由 tx_data_hold 驱动，而不是直接把 tx_fifo_q 接到
-    // uart_tx 上。这样 FIFO 的 q 更新时机（show-ahead 还是普通模式）就只影响
-    // 本状态机，不会影响 uart_tx 的锁存时刻。
-    reg [7:0] tx_data_hold;
-    reg       tx_rdreq;
-    reg       tx_send_flag;
+    reg  [7:0] tx_data_hold;
+    reg        tx_send_flag;
 
-    localparam TX_IDLE      = 3'd0;
-    localparam TX_WAIT_Q    = 3'd1;  // 仅普通 FIFO 模式：等 rdreq 之后 q 更新
-    localparam TX_SEND      = 3'd2;  // 仅普通 FIFO 模式：锁存 q 并发出
-    localparam TX_WAIT_BUSY = 3'd3;
-    localparam TX_WAIT_DONE = 3'd4;
+    localparam TX_IDLE      = 2'd0;
+    localparam TX_WAIT_BUSY = 2'd1;
+    localparam TX_WAIT_DONE = 2'd2;
 
-    reg [2:0] tx_state;
+    reg  [1:0] tx_state;
+
+    // Show-Ahead 模式规范：读使能必须用组合逻辑产生，且必须严格判断空状态 (!tx_fifo_empty)
+    // 仅在发送器就绪 (TX_IDLE && tx_in_ready) 且 FIFO 非空时产生单拍读使能
+    assign tx_fifo_rdreq = (tx_state == TX_IDLE) && (!tx_fifo_empty) && tx_in_ready;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             tx_state     <= TX_IDLE;
-            tx_rdreq     <= 1'b0;
             tx_send_flag <= 1'b0;
             tx_data_hold <= 8'd0;
         end else begin
-            tx_rdreq     <= 1'b0;
             tx_send_flag <= 1'b0;
+
             case (tx_state)
                 TX_IDLE: begin
-                    // uart_tx 的 in_ready 就是 !busy，用 in_ready 而不是 !tx_busy，
-                    // 接口语义更明确
-                    if (!tx_fifo_empty && tx_in_ready) begin
-                        tx_rdreq <= 1'b1;  // 弹出队首
-                        if (FIFO_SHOW_AHEAD) begin
-                            // show-ahead：本拍 q 就是队首，同拍锁存即可
-                            tx_data_hold <= tx_fifo_q;
-                            tx_send_flag <= 1'b1;
-                            tx_state     <= TX_WAIT_BUSY;
-                        end else begin
-                            // 普通 FIFO：rdreq 之后 q 才更新，先等一拍
-                            tx_state <= TX_WAIT_Q;
-                        end
+                    if (tx_fifo_rdreq) begin
+                        // Show-Ahead 模式：本拍 q 就是队首有效数据，同拍直接采走
+                        tx_data_hold <= tx_fifo_q;
+                        tx_send_flag <= 1'b1;
+                        tx_state     <= TX_WAIT_BUSY;
                     end
                 end
-                TX_WAIT_Q: begin
-                    tx_state <= TX_SEND;
-                end
-                TX_SEND: begin
-                    tx_data_hold <= tx_fifo_q;  // 此时 q 才是刚弹出的数据
-                    tx_send_flag <= 1'b1;
-                    tx_state     <= TX_WAIT_BUSY;
-                end
+
                 TX_WAIT_BUSY: begin
                     if (tx_busy) begin
                         tx_state <= TX_WAIT_DONE;
                     end
                 end
+
                 TX_WAIT_DONE: begin
                     if (!tx_busy) begin
                         tx_state <= TX_IDLE;
                     end
                 end
+
                 default: tx_state <= TX_IDLE;
             endcase
         end
@@ -189,7 +168,7 @@ module uart_core #(
         .sclr  (~rst_n),  // 同步复位，低电平有效取反
         .data  (tx_data),
         .wrreq (tx_wrreq),
-        .rdreq (tx_rdreq),
+        .rdreq (tx_fifo_rdreq),
         .empty (tx_fifo_empty),
         .full  (tx_full),
         .q     (tx_fifo_q),

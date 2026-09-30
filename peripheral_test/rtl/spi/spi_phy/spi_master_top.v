@@ -35,18 +35,17 @@ module spi_master_top #(
 );
 
     // ================================================================
-    // 局部参数
+    // FSM 状态定义
     // ================================================================
+    localparam S_IDLE = 1'b0;
+    localparam S_WAIT = 1'b1;
 
-    localparam ST_IDLE = 1'b0;
-    localparam ST_WAIT = 1'b1;
+    reg                    current_state;
+    reg                    next_state;
 
     // ================================================================
-    // 内部信号
+    // 内部控制与计数寄存器
     // ================================================================
-
-    reg                    state;
-
     reg                    phy_start;
     reg  [            7:0] phy_tx_data;
 
@@ -61,10 +60,14 @@ module spi_master_top #(
     // PHY 传输进度计数器（1 ~ 16，用于在字节传输过半时提前发出 tx_req）
     reg  [            4:0] progress_cnt;
 
-    // rx_valid 脉冲
+    // rx_valid 脉冲寄存器
     reg                    rx_valid_reg;
 
-    assign busy     = (state != ST_IDLE);
+    // 状态转移条件指示线
+    wire                   is_last_byte = (byte_cnt == burst_len_latched - 1'b1);
+    wire                   burst_done = (current_state == S_WAIT) && phy_done && is_last_byte;
+
+    assign busy     = (current_state != S_IDLE);
     assign rx_valid = rx_valid_reg;
     assign rx_byte  = phy_rx_data;
 
@@ -84,15 +87,13 @@ module spi_master_top #(
 
     // ================================================================
     // tx_req：在字节传输过半时发出脉冲，给上层约 8 个周期准备下一字节
-    // 最后一个字节不发 tx_req（没有下一字节了）
-    // ================================================================
     // 当前字节不是最后一字节时才请求下一字节
-    assign tx_req = (progress_cnt == 5'd8) && (byte_cnt != burst_len_latched - 1);
+    // ================================================================
+    assign tx_req = (progress_cnt == 5'd8) && (byte_cnt != burst_len_latched - 1'b1);
 
     // ================================================================
     // SPI PHY 实例化（固定 8 bit 单字节传输引擎）
     // ================================================================
-
     spi_phy #(
         .CPOL     (CPOL),
         .CPHA     (CPHA),
@@ -113,66 +114,86 @@ module spi_master_top #(
         .spi_miso(spi_miso)
     );
 
+    // ================================================================
+    // 【第一段】现态时序寄存器
+    // ================================================================
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
-            state             <= ST_IDLE;
+            current_state <= S_IDLE;
+        end else begin
+            current_state <= next_state;
+        end
+    end
+
+    // ================================================================
+    // 【第二段】次态组合逻辑决策
+    // ================================================================
+    always @(*) begin
+        next_state = current_state;
+
+        case (current_state)
+            S_IDLE: begin
+                if (start) next_state = S_WAIT;
+            end
+
+            S_WAIT: begin
+                if (burst_done) next_state = S_IDLE;
+            end
+
+            default: next_state = S_IDLE;
+        endcase
+    end
+
+    // ================================================================
+    // 【第三段】数据通路与控制输出 (同步时序逻辑)
+    // ================================================================
+    always @(posedge sys_clk or negedge sys_rst_n) begin
+        if (!sys_rst_n) begin
             phy_start         <= 1'b0;
-            phy_tx_data       <= 8'b0;
+            phy_tx_data       <= 8'h00;
             byte_cnt          <= {BURST_WIDTH{1'b0}};
             burst_len_latched <= {BURST_WIDTH{1'b0}};
             rx_valid_reg      <= 1'b0;
             spi_cs_n          <= 1'b1;
             done              <= 1'b0;
         end else begin
-            // 默认值
+            // 默认脉冲信号清零
             phy_start    <= 1'b0;
             done         <= 1'b0;
             rx_valid_reg <= 1'b0;
 
-            case (state)
-
-                // ----------------------------------------------------
-                // 空闲：等待上层启动
-                // ----------------------------------------------------
-                ST_IDLE: begin
+            case (current_state)
+                S_IDLE: begin
                     spi_cs_n <= 1'b1;
 
                     if (start) begin
-                        // 锁存 burst_len 和第 1 字节
+                        // 锁存 burst_len 与第 1 个待发字节
                         burst_len_latched <= burst_len;
                         phy_tx_data       <= tx_data;
                         byte_cnt          <= {BURST_WIDTH{1'b0}};
 
-                        // CS 拉低 + PHY 启动（同一拍）
+                        // CS 拉低 + PHY 启动脉冲 (同一拍生效)
                         spi_cs_n          <= 1'b0;
                         phy_start         <= 1'b1;
-
-                        state             <= ST_WAIT;
                     end
                 end
 
-                // ----------------------------------------------------
-                // 等待：PHY 传输中 / 自动加载下一字节
-                // ----------------------------------------------------
-                ST_WAIT: begin
+                S_WAIT: begin
                     spi_cs_n <= 1'b0;
 
                     if (phy_done) begin
                         // 当前字节接收完成 → 输出 rx_valid
                         rx_valid_reg <= 1'b1;
 
-                        if (byte_cnt == burst_len_latched - 1) begin
+                        if (is_last_byte) begin
                             // ------------------------------
-                            // 最后一个字节 → 收尾
+                            // 最后一个字节 → 完成事务收尾
                             // ------------------------------
                             spi_cs_n <= 1'b1;
                             done     <= 1'b1;
-                            state    <= ST_IDLE;
-
                         end else begin
                             // ------------------------------
-                            // 还有更多字节 → 加载 tx_data 上的下一字节
-                            // （上层在 tx_req 时已把数据放到 tx_data 上）
+                            // 还有后续字节 → 加载下一字节并再次启动 PHY
                             // ------------------------------
                             byte_cnt    <= byte_cnt + 1'b1;
                             phy_tx_data <= tx_data;
@@ -182,10 +203,8 @@ module spi_master_top #(
                 end
 
                 default: begin
-                    state    <= ST_IDLE;
                     spi_cs_n <= 1'b1;
                 end
-
             endcase
         end
     end

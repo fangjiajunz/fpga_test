@@ -315,6 +315,7 @@ set_global_assignment -name VERILOG_FILE ../rtl/spi/spi_phy/spi_phy.v
 set_global_assignment -name VERILOG_FILE ../rtl/spi/spi_phy/spi_master_top.v
 set_global_assignment -name VERILOG_FILE ../rtl/flash/w25q16_ctrl.v
 set_global_assignment -name VERILOG_FILE ../rtl/app/flash_test_app.v
+set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_tx_arbiter.v
 set_global_assignment -name VERILOG_FILE ../rtl/key/ax_debounce.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/clk_div.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/rd_id.v

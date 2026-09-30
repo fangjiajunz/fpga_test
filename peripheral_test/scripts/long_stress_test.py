@@ -22,7 +22,7 @@ import serial
 import serial.tools.list_ports
 
 DEFAULT_PORT = "COM3"
-DEFAULT_BAUD = 115200
+DEFAULT_BAUD = 2000000
 
 
 def build_frame(packet_type: int, payload: bytes) -> bytes:
