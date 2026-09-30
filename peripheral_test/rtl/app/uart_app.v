@@ -94,11 +94,8 @@ module uart_app (
                 btn_tx_pending <= 1'b1;
             end
 
-            // 发送通道仲裁：解码数据优先流式发出；空闲时处理按键发送
-            if (data_out_valid) begin
-                tx_data  <= data_out;
-                tx_wrreq <= 1'b1;
-            end else if (btn_tx_pending) begin
+            // 处理按键发送 (已移除数据流回环转发)
+            if (btn_tx_pending) begin
                 tx_data        <= btn_tx_cnt;
                 tx_wrreq       <= 1'b1;
                 btn_tx_pending <= 1'b0;
