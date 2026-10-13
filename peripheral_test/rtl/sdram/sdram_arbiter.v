@@ -2,16 +2,16 @@
 `include "sdram_cmd_def.vh"
 
 module sdram_arbiter (
-    input  wire        clk,
-    input  wire        rst_n,
+    input wire clk,
+    input wire rst_n,
 
     // 1. 初始化通道 (来自 sdram_init, 绝对最高优先级)
-    input  wire        init_done,
-    input  wire [ 3:0] init_cmd,
-    input  wire [12:0] init_addr,
-    input  wire [ 1:0] init_ba,
-    input  wire        init_cke,
-    input  wire [ 1:0] init_dqm,
+    input wire        init_done,
+    input wire [ 3:0] init_cmd,
+    input wire [12:0] init_addr,
+    input wire [ 1:0] init_ba,
+    input wire        init_cke,
+    input wire [ 1:0] init_dqm,
 
     // 2. 刷新通道 (来自 sdram_refresh, 次高优先级)
     input  wire        ref_req,
@@ -35,19 +35,19 @@ module sdram_arbiter (
     input  wire        rw_data_out_en,
 
     // 4. 仲裁输出 (送往 sdram_phy 物理层)
-    output reg  [ 3:0] phy_cmd,
-    output reg  [12:0] phy_addr,
-    output reg  [ 1:0] phy_ba,
-    output reg         phy_cke,
-    output reg  [ 1:0] phy_dqm,
-    output reg         phy_data_out_en
+    output reg [ 3:0] phy_cmd,
+    output reg [12:0] phy_addr,
+    output reg [ 1:0] phy_ba,
+    output reg        phy_cke,
+    output reg [ 1:0] phy_dqm,
+    output reg        phy_data_out_en
 );
 
     // 仲裁状态定义
-    localparam [1:0] S_INIT = 2'd0;     // 独占初始化阶段
-    localparam [1:0] S_IDLE = 2'd1;     // 空闲待命与仲裁决策
-    localparam [1:0] S_REF  = 2'd2;     // 授权自动刷新
-    localparam [1:0] S_RW   = 2'd3;     // 授权突发读写
+    localparam [1:0] S_INIT = 2'd0;  // 独占初始化阶段
+    localparam [1:0] S_IDLE = 2'd1;  // 空闲待命与仲裁决策
+    localparam [1:0] S_REF = 2'd2;  // 授权自动刷新
+    localparam [1:0] S_RW = 2'd3;  // 授权突发读写
 
     reg [1:0] state;
     reg [1:0] next_state;
@@ -56,34 +56,25 @@ module sdram_arbiter (
     always @(*) begin
         case (state)
             S_INIT: begin
-                if (init_done)
-                    next_state = S_IDLE;
-                else
-                    next_state = S_INIT;
+                if (init_done) next_state = S_IDLE;
+                else next_state = S_INIT;
             end
 
             S_IDLE: begin
                 // 优先级裁决: 刷新 > 读写
-                if (ref_req)
-                    next_state = S_REF;
-                else if (rw_bus_req)
-                    next_state = S_RW;
-                else
-                    next_state = S_IDLE;
+                if (ref_req) next_state = S_REF;
+                else if (rw_bus_req) next_state = S_RW;
+                else next_state = S_IDLE;
             end
 
             S_REF: begin
-                if (ref_done)
-                    next_state = S_IDLE;
-                else
-                    next_state = S_REF;
+                if (ref_done) next_state = S_IDLE;
+                else next_state = S_REF;
             end
 
             S_RW: begin
-                if (rw_done)
-                    next_state = S_IDLE;
-                else
-                    next_state = S_RW;
+                if (rw_done) next_state = S_IDLE;
+                else next_state = S_RW;
             end
 
             default: next_state = S_IDLE;
@@ -91,10 +82,8 @@ module sdram_arbiter (
     end
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
-            state <= S_INIT;
-        else
-            state <= next_state;
+        if (!rst_n) state <= S_INIT;
+        else state <= next_state;
     end
 
     // 仲裁应答握手信号
@@ -139,7 +128,7 @@ module sdram_arbiter (
                 phy_data_out_en = rw_data_out_en;
             end
 
-            default: begin // S_IDLE
+            default: begin  // S_IDLE
                 phy_cmd         = `CMD_NOP;
                 phy_addr        = 13'h1FFF;
                 phy_ba          = 2'b11;
