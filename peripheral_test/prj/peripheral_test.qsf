@@ -50,6 +50,7 @@ set_global_assignment -name DEVICE_FILTER_PIN_COUNT 256
 set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 8
 set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 1
 set_global_assignment -name NOMINAL_CORE_SUPPLY_VOLTAGE 1.2V
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
 
 # -------------------------------------------------------------------------- #
 # Active template pin assignments
@@ -267,6 +268,7 @@ set_global_assignment -name RESERVE_DATA1_AFTER_CONFIGURATION "USE AS REGULAR IO
 set_global_assignment -name RESERVE_FLASH_NCE_AFTER_CONFIGURATION "USE AS REGULAR IO"
 set_global_assignment -name RESERVE_DCLK_AFTER_CONFIGURATION "USE AS REGULAR IO"
 set_global_assignment -name RESERVE_DATA0_AFTER_CONFIGURATION "USE AS REGULAR IO"
+set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "USE AS REGULAR IO"
 
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
@@ -322,6 +324,14 @@ set_global_assignment -name VERILOG_FILE ../rtl/lcd/rd_id.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_driver.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_display.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_top.v
+set_global_assignment -name SEARCH_PATH ../rtl/sdram
+set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_init.v
+set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_refresh.v
+set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_rw_ctrl.v
+set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_arbiter.v
+set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_phy.v
+set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_top.v
+set_global_assignment -name VERILOG_FILE ../rtl/app/sdram_test_app.v
 set_global_assignment -name SDC_FILE system.sdc
 set_global_assignment -name QIP_FILE ipcore/fifo_ip/fifo_8x64.qip
 set_global_assignment -name MIF_FILE ipcore/rom/rom_test.mif

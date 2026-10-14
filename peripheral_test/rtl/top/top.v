@@ -17,7 +17,19 @@ module top #(
     output wire spi_cs_n,
     output wire spi_sclk,
     output wire spi_mosi,
-    input  wire spi_miso
+    input  wire spi_miso,
+
+    // SDRAM 物理芯片接口
+    output wire        sdram_clk,   // SDRAM 芯片时钟
+    output wire        sdram_cke,   // SDRAM 时钟使能
+    output wire        sdram_cs_n,  // SDRAM 片选
+    output wire        sdram_ras_n, // SDRAM 行有效
+    output wire        sdram_cas_n, // SDRAM 列有效
+    output wire        sdram_we_n,  // SDRAM 写有效
+    output wire [ 1:0] sdram_ba,    // SDRAM Bank 地址
+    output wire [12:0] sdram_addr,  // SDRAM 行/列地址
+    output wire [ 1:0] sdram_dqm,   // SDRAM 数据掩码
+    inout  wire [15:0] sdram_data   // SDRAM 双向数据总线
 );
 
     // ================================================================
@@ -73,6 +85,63 @@ module top #(
         .timer_tick(tick_20ms),
         .btn_edge  (flash_test_trigger)
     );
+
+    // key[2] 用于手动再次触发 SDRAM 读写自检
+    wire sdram_test_trigger_sys;
+
+    ax_debounce u_debounce_sdram_key (
+        .sys_clk   (sys_clk),
+        .sys_rst_n (rst_n),
+        .btn_in    (key[2]),
+        .timer_tick(tick_20ms),
+        .btn_edge  (sdram_test_trigger_sys)
+    );
+
+    // ================================================================
+    // 【PLL 时钟管理】
+    // 输入 50MHz 系统时钟，生成:
+    // c0: 100MHz 0° 相位 (SDRAM 控制器工作时钟 clk_100m)
+    // c1: 100MHz -75° 相位 (SDRAM 物理芯片输出时钟 clk_100m_shift)
+    // ================================================================
+    wire clk_100m;
+    wire clk_100m_shift;
+    wire pll_locked;
+
+    pll_100m u_pll_100m (
+        .areset (!sys_rst_n),
+        .inclk0 (sys_clk),
+        .c0     (clk_100m),
+        .c1     (clk_100m_shift),
+        .locked (pll_locked)
+    );
+
+    // 100MHz 时钟域复位同步释放
+    reg rst_n_100m_r1, rst_n_100m_r2;
+    always @(posedge clk_100m or negedge sys_rst_n) begin
+        if (!sys_rst_n) begin
+            rst_n_100m_r1 <= 1'b0;
+            rst_n_100m_r2 <= 1'b0;
+        end else begin
+            rst_n_100m_r1 <= pll_locked;
+            rst_n_100m_r2 <= rst_n_100m_r1;
+        end
+    end
+    wire rst_n_100m = rst_n_100m_r2;
+
+    // key[2] 触发脉冲跨时钟域同步至 100MHz 域
+    reg sdram_trig_r1, sdram_trig_r2, sdram_trig_r3;
+    always @(posedge clk_100m or negedge rst_n_100m) begin
+        if (!rst_n_100m) begin
+            sdram_trig_r1 <= 1'b0;
+            sdram_trig_r2 <= 1'b0;
+            sdram_trig_r3 <= 1'b0;
+        end else begin
+            sdram_trig_r1 <= sdram_test_trigger_sys;
+            sdram_trig_r2 <= sdram_trig_r1;
+            sdram_trig_r3 <= sdram_trig_r2;
+        end
+    end
+    wire sdram_test_trigger = sdram_trig_r2 && !sdram_trig_r3;
 
     // ================================================================
     // 【物理驱动层 PHY / Driver】
@@ -224,6 +293,7 @@ module top #(
     // ================================================================
     wire [7:0] app_tx_data;
     wire       app_tx_wrreq;
+    wire [3:0] app_led;
 
     uart_app u_uart_app (
         .clk  (sys_clk),
@@ -244,7 +314,7 @@ module top #(
         .tx_wrreq(app_tx_wrreq),
 
         // 外设引脚
-        .led(led[3:0]),
+        .led(app_led),
         .key(key[3:0])
     );
 
@@ -283,6 +353,113 @@ module top #(
         .test_done(),
         .test_pass()
     );
+
+    // ================================================================
+    // 【控制器与物理层 Controller & PHY】
+    // 3. SDRAM 控制器顶层封装 (sdram_top)
+    // ================================================================
+    wire        sdram_wr_req;
+    wire        sdram_rd_req;
+    wire [23:0] sdram_wr_addr;
+    wire [23:0] sdram_rd_addr;
+    wire [ 9:0] sdram_wr_len;
+    wire [ 9:0] sdram_rd_len;
+    wire [15:0] sdram_wr_data;
+    wire        sdram_wr_ack;
+    wire        sdram_rd_ack;
+    wire [15:0] sdram_rd_data;
+    wire        sdram_rw_busy;
+    wire        sdram_rw_done;
+    wire        sdram_init_done;
+
+    sdram_top #(
+        .CLK_FREQ_MHZ (100)
+    ) u_sdram_top (
+        .ref_clk   (clk_100m),
+        .out_clk   (clk_100m_shift),
+        .rst_n     (rst_n_100m),
+
+        .wr_req    (sdram_wr_req),
+        .rd_req    (sdram_rd_req),
+        .wr_addr   (sdram_wr_addr),
+        .rd_addr   (sdram_rd_addr),
+        .wr_len    (sdram_wr_len),
+        .rd_len    (sdram_rd_len),
+        .wr_data   (sdram_wr_data),
+        .wr_ack    (sdram_wr_ack),
+        .rd_ack    (sdram_rd_ack),
+        .rd_data   (sdram_rd_data),
+        .rw_busy   (sdram_rw_busy),
+        .rw_done   (sdram_rw_done),
+        .init_done (sdram_init_done),
+
+        .sdram_clk (sdram_clk),
+        .sdram_cke (sdram_cke),
+        .sdram_cs_n(sdram_cs_n),
+        .sdram_ras_n(sdram_ras_n),
+        .sdram_cas_n(sdram_cas_n),
+        .sdram_we_n(sdram_we_n),
+        .sdram_ba  (sdram_ba),
+        .sdram_addr(sdram_addr),
+        .sdram_dqm (sdram_dqm),
+        .sdram_data(sdram_data)
+    );
+
+    // ================================================================
+    // 【业务应用层 Application Layer】
+    // 3. sdram_test_app 模块：SDRAM 突发读写自检应用
+    //    - 上电约 1ms 自动向 Bank0/Row0/Col0 突发写入 10 个递增数据并读回核对
+    //    - 支持通过 key[2] 随时重新发起测试
+    // ================================================================
+    wire        sdram_test_busy;
+    wire        sdram_test_done;
+    wire        sdram_test_pass;
+    wire        sdram_test_err;
+    wire [15:0] sdram_error_cnt;
+
+    sdram_test_app #(
+        .TEST_ADDR       (24'h000000),
+        .TEST_BURST_LEN  (10'd10),
+        .AUTO_START_WAIT (100_000)
+    ) u_sdram_test_app (
+        .clk        (clk_100m),
+        .rst_n      (rst_n_100m),
+
+        .btn_trigger(sdram_test_trigger),
+
+        .init_done  (sdram_init_done),
+        .rw_busy    (sdram_rw_busy),
+        .rw_done    (sdram_rw_done),
+        .wr_ack     (sdram_wr_ack),
+        .rd_ack     (sdram_rd_ack),
+        .rd_data    (sdram_rd_data),
+
+        .wr_req     (sdram_wr_req),
+        .rd_req     (sdram_rd_req),
+        .wr_addr    (sdram_wr_addr),
+        .rd_addr    (sdram_rd_addr),
+        .wr_len     (sdram_wr_len),
+        .rd_len     (sdram_rd_len),
+        .wr_data    (sdram_wr_data),
+
+        .test_busy  (sdram_test_busy),
+        .test_done  (sdram_test_done),
+        .test_pass  (sdram_test_pass),
+        .test_err   (sdram_test_err),
+        .error_cnt  (sdram_error_cnt)
+    );
+
+    // ================================================================
+    // 【板载 LED 状态显示】
+    // 默认展示 SDRAM 硬件状态 (低电平点亮):
+    // led[0]: SDRAM 初始化完成 (init_done)
+    // led[1]: SDRAM 测试运行中 (test_busy)
+    // led[2]: SDRAM 测试通过 (test_pass)
+    // led[3]: SDRAM 测试出错 (test_err)
+    // 若 uart_app 收到非零 LED 控制指令，则展示命令值
+    // ================================================================
+    wire [3:0] sdram_led = {~sdram_test_err, ~sdram_test_pass, ~sdram_test_busy, ~sdram_init_done};
+    assign led = (app_led != 4'b0000) ? app_led : sdram_led;
 
     // ================================================================
     // 【发送通道仲裁器】

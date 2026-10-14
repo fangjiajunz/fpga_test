@@ -129,7 +129,7 @@ module sdram_arbiter (
             end
 
             default: begin  // S_IDLE
-                phy_cmd         = `CMD_NOP;
+                phy_cmd         = 4'b0111;
                 phy_addr        = 13'h1FFF;
                 phy_ba          = 2'b11;
                 phy_cke         = 1'b1;
