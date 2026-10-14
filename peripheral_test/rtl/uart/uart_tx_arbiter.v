@@ -9,13 +9,17 @@ module uart_tx_arbiter (
     input  wire       clk,
     input  wire       rst_n,
 
-    // 通道 0 (Flash 自检报告)
+    // 通道 0: flash_test_app (Flash 自检报告，最高优先级)
     input  wire [7:0] ch0_data,
     input  wire       ch0_wrreq,
 
-    // 通道 1 (UART 业务应用)
+    // 通道 1: sdram_report_app (SDRAM 自检报告，次高优先级)
     input  wire [7:0] ch1_data,
     input  wire       ch1_wrreq,
+
+    // 通道 2: uart_app (日常业务通信 / 按键上报，普通优先级)
+    input  wire [7:0] ch2_data,
+    input  wire       ch2_wrreq,
 
     // 输出至 uart_core TX FIFO
     output reg  [7:0] tx_data,
@@ -32,6 +36,9 @@ module uart_tx_arbiter (
                 tx_wrreq <= 1'b1;
             end else if (ch1_wrreq) begin
                 tx_data  <= ch1_data;
+                tx_wrreq <= 1'b1;
+            end else if (ch2_wrreq) begin
+                tx_data  <= ch2_data;
                 tx_wrreq <= 1'b1;
             end else begin
                 tx_data  <= 8'h00;

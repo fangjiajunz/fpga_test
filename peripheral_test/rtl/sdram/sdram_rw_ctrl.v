@@ -116,13 +116,13 @@ module sdram_rw_ctrl #(
         else
             case (state)
                 `W_ACTIVE: cnt_clk <= 10'd0;
-                `W_TRCD:   cnt_clk <= (`end_trcd) ? 10'd0 : cnt_clk + 1'b1;
-                `W_CL:     cnt_clk <= (`end_tcl) ? 10'd0 : cnt_clk + 1'b1;
-                `W_RD:     cnt_clk <= (cnt_clk == cur_len + 10'd2) ? 10'd0 : cnt_clk + 1'b1;
-                `W_WD:     cnt_clk <= (cnt_clk == cur_len - 10'd1) ? 10'd0 : cnt_clk + 1'b1;
-                `W_TWR:    cnt_clk <= (`end_twr) ? 10'd0 : cnt_clk + 1'b1;
-                `W_TRP:    cnt_clk <= (`end_trp) ? 10'd0 : cnt_clk + 1'b1;
-                default:   cnt_clk <= 10'd0;
+                `W_TRCD: cnt_clk <= (`end_trcd) ? 10'd0 : cnt_clk + 1'b1;
+                `W_CL: cnt_clk <= (`end_tcl) ? 10'd0 : cnt_clk + 1'b1;
+                `W_RD: cnt_clk <= (cnt_clk == cur_len + 10'd2) ? 10'd0 : cnt_clk + 1'b1;
+                `W_WD: cnt_clk <= (cnt_clk == cur_len - 10'd1) ? 10'd0 : cnt_clk + 1'b1;
+                `W_TWR: cnt_clk <= (`end_twr) ? 10'd0 : cnt_clk + 1'b1;
+                `W_TRP: cnt_clk <= (`end_trp) ? 10'd0 : cnt_clk + 1'b1;
+                default: cnt_clk <= 10'd0;
             endcase
     end
 
@@ -193,11 +193,12 @@ module sdram_rw_ctrl #(
         end else begin
             // 写响应：在 W_WRITE 及 W_WD 期间从写 FIFO 取出数据 (提前1拍)
             wr_ack  <= ((state == `W_TRCD && next_state == `W_WRITE) ||
-                        (state == `W_WRITE) ||
-                        (state == `W_WD && cnt_clk < cur_len - 10'd2));
+                  (state == `W_WRITE) ||
+                  (state == `W_WD && cnt_clk < cur_len - 10'd2));
 
-            // 读响应：在 W_RD 期间从 SDRAM 接收有效数据打入读 FIFO
-            rd_ack <= (state == `W_RD) && (cnt_clk >= 10'd1) && (cnt_clk < cur_len + 10'd1);
+            // 读响应：在 W_RD 期间从 SDRAM 接收有效数据打入读 FIFO (提前对齐首个突发数据)
+            rd_ack <= ((state == `W_CL && next_state == `W_RD) ||
+                       (state == `W_RD && cnt_clk < cur_len - 10'd1));
 
             // 操作完成指示脉冲
             rw_done <= (state == `W_TRP && next_state == `W_IDLE);

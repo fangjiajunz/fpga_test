@@ -416,6 +416,9 @@ module top #(
     wire        sdram_test_pass;
     wire        sdram_test_err;
     wire [15:0] sdram_error_cnt;
+    wire [15:0] sdram_first_exp_data;
+    wire [15:0] sdram_first_rd_data;
+    wire        sdram_done_toggle;
 
     sdram_test_app #(
         .TEST_ADDR       (24'h000000),
@@ -442,11 +445,34 @@ module top #(
         .rd_len     (sdram_rd_len),
         .wr_data    (sdram_wr_data),
 
-        .test_busy  (sdram_test_busy),
-        .test_done  (sdram_test_done),
-        .test_pass  (sdram_test_pass),
-        .test_err   (sdram_test_err),
-        .error_cnt  (sdram_error_cnt)
+        .test_busy     (sdram_test_busy),
+        .test_done     (sdram_test_done),
+        .test_pass     (sdram_test_pass),
+        .test_err      (sdram_test_err),
+        .error_cnt     (sdram_error_cnt),
+        .first_exp_data(sdram_first_exp_data),
+        .first_rd_data (sdram_first_rd_data),
+        .done_toggle   (sdram_done_toggle)
+    );
+
+    // ================================================================
+    // 【业务应用层 Application Layer】
+    // 4. sdram_report_app 模块：SDRAM 自检结果 ASCII 串口格式化上报
+    // ================================================================
+    wire [7:0] sdram_tx_data;
+    wire       sdram_tx_wrreq;
+
+    sdram_report_app u_sdram_report_app (
+        .clk           (sys_clk),
+        .rst_n         (rst_n),
+        .done_toggle   (sdram_done_toggle),
+        .test_pass     (sdram_test_pass),
+        .error_cnt     (sdram_error_cnt),
+        .first_exp_data(sdram_first_exp_data),
+        .first_rd_data (sdram_first_rd_data),
+        .tx_data       (sdram_tx_data),
+        .tx_wrreq      (sdram_tx_wrreq),
+        .tx_full       (uart_tx_full)
     );
 
     // ================================================================
@@ -463,7 +489,7 @@ module top #(
 
     // ================================================================
     // 【发送通道仲裁器】
-    // 将 Flash 自检输出流与 UART 业务通信流无锁仲裁后接入 TX FIFO
+    // 将 Flash 自检输出流、SDRAM 自检输出流与 UART 业务通信流无锁仲裁后接入 TX FIFO
     // ================================================================
     uart_tx_arbiter u_uart_tx_arbiter (
         .clk  (sys_clk),
@@ -472,8 +498,11 @@ module top #(
         .ch0_data (flash_tx_data),
         .ch0_wrreq(flash_tx_wrreq),
 
-        .ch1_data (app_tx_data),
-        .ch1_wrreq(app_tx_wrreq),
+        .ch1_data (sdram_tx_data),
+        .ch1_wrreq(sdram_tx_wrreq),
+
+        .ch2_data (app_tx_data),
+        .ch2_wrreq(app_tx_wrreq),
 
         .tx_data (uart_tx_data),
         .tx_wrreq(uart_tx_wrreq)

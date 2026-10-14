@@ -332,9 +332,10 @@ set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_arbiter.v
 set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_phy.v
 set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_top.v
 set_global_assignment -name VERILOG_FILE ../rtl/app/sdram_test_app.v
+set_global_assignment -name VERILOG_FILE ../rtl/app/sdram_report_app.v
 set_global_assignment -name SDC_FILE system.sdc
 set_global_assignment -name QIP_FILE ipcore/fifo_ip/fifo_8x64.qip
 set_global_assignment -name MIF_FILE ipcore/rom/rom_test.mif
 set_global_assignment -name QIP_FILE ipcore/rom/rom_256x8.qip
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name QIP_FILE ipcore/pll/pll_100m.qip
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
