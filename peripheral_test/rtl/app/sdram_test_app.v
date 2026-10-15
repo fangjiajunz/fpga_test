@@ -74,6 +74,21 @@ module sdram_test_app #(
         else cnt_gap <= 4'd0;
     end
 
+    // 外部按键触发信号跨时钟域边沿检测 (从 50MHz 到 100MHz)
+    reg btn_trig_d0, btn_trig_d1, btn_trig_d2;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            btn_trig_d0 <= 1'b0;
+            btn_trig_d1 <= 1'b0;
+            btn_trig_d2 <= 1'b0;
+        end else begin
+            btn_trig_d0 <= btn_trigger;
+            btn_trig_d1 <= btn_trig_d0;
+            btn_trig_d2 <= btn_trig_d1;
+        end
+    end
+    wire btn_trig_pulse = btn_trig_d1 && !btn_trig_d2;
+
     // 状态转移逻辑
     always @(*) begin
         case (state)
@@ -83,7 +98,7 @@ module sdram_test_app #(
             end
 
             ST_IDLE: begin
-                if (btn_trigger && init_done && !rw_busy) next_state = ST_WRITE_REQ;
+                if (btn_trig_pulse && init_done && !rw_busy) next_state = ST_WRITE_REQ;
                 else next_state = ST_IDLE;
             end
 
@@ -154,7 +169,7 @@ module sdram_test_app #(
                     test_busy <= 1'b0;
                     wr_req    <= 1'b0;
                     rd_req    <= 1'b0;
-                    if (btn_trigger && init_done && !rw_busy) begin
+                    if (btn_trig_pulse && init_done && !rw_busy) begin
                         test_busy      <= 1'b1;
                         test_done      <= 1'b0;
                         test_pass      <= 1'b0;

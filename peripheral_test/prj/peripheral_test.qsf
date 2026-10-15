@@ -324,6 +324,7 @@ set_global_assignment -name VERILOG_FILE ../rtl/lcd/rd_id.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_driver.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_display.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/lcd_top.v
+set_global_assignment -name VERILOG_FILE ../rtl/common/rst_sync.v
 set_global_assignment -name SEARCH_PATH ../rtl/sdram
 set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_init.v
 set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_refresh.v

@@ -1,3 +1,10 @@
+`timescale 1ns / 1ps
+
+// ==============================================================================
+// 模块名称 : top
+// 模块功能 : 顶层连线模块 (纯模块例化与板级引脚互联，不含内部行为/控制逻辑)
+// ==============================================================================
+
 module top #(
     parameter UART_BPS = 2000000,
     parameter CLK_FREQ = 50_000_000
@@ -33,25 +40,47 @@ module top #(
 );
 
     // ================================================================
-    // 复位同步：异步复位、同步释放
+    // 【复位同步管理】
+    // 异步复位、同步释放纯模块例化
     // ================================================================
-    reg rst_n_sync_1;
-    reg rst_n_sync_2;
+    wire rst_n;
 
-    always @(posedge sys_clk or negedge sys_rst_n) begin
-        if (!sys_rst_n) begin
-            rst_n_sync_1 <= 1'b0;
-            rst_n_sync_2 <= 1'b0;
-        end else begin
-            rst_n_sync_1 <= 1'b1;
-            rst_n_sync_2 <= rst_n_sync_1;
-        end
-    end
-
-    wire rst_n = rst_n_sync_2;
+    rst_sync u_rst_sync_sys (
+        .clk        (sys_clk),
+        .async_rst_n(sys_rst_n),
+        .ext_en     (1'b1),
+        .sync_rst_n (rst_n)
+    );
 
     // ================================================================
-    // 定时节拍发生器 (Tick Generators)
+    // 【PLL 时钟管理】
+    // 输入 50MHz 系统时钟，生成:
+    // c0: 100MHz 0° 相位 (SDRAM 控制器工作时钟 clk_100m)
+    // c1: 100MHz -75° 相位 (SDRAM 物理芯片输出时钟 clk_100m_shift)
+    // ================================================================
+    wire clk_100m;
+    wire clk_100m_shift;
+    wire pll_locked;
+
+    pll_100m u_pll_100m (
+        .areset (!sys_rst_n),
+        .inclk0 (sys_clk),
+        .c0     (clk_100m),
+        .c1     (clk_100m_shift),
+        .locked (pll_locked)
+    );
+
+    wire rst_n_100m;
+
+    rst_sync u_rst_sync_100m (
+        .clk        (clk_100m),
+        .async_rst_n(sys_rst_n),
+        .ext_en     (pll_locked),
+        .sync_rst_n (rst_n_100m)
+    );
+
+    // ================================================================
+    // 【定时节拍发生器 (Tick Generators)】
     // ================================================================
     wire tick_1s;
     wire tick_20ms;
@@ -73,8 +102,9 @@ module top #(
     );
 
     // ================================================================
-    // 板载按键消抖 (纯模块例化)
-    // key[1] 用于手动再次触发 Flash 读写自检
+    // 【板载按键消抖 (纯模块例化)】
+    // key[1]: 手动再次触发 Flash 读写自检
+    // key[2]: 手动再次触发 SDRAM 读写自检
     // ================================================================
     wire flash_test_trigger;
 
@@ -86,62 +116,15 @@ module top #(
         .btn_edge  (flash_test_trigger)
     );
 
-    // key[2] 用于手动再次触发 SDRAM 读写自检
-    wire sdram_test_trigger_sys;
+    wire sdram_test_trigger;
 
     ax_debounce u_debounce_sdram_key (
         .sys_clk   (sys_clk),
         .sys_rst_n (rst_n),
         .btn_in    (key[2]),
         .timer_tick(tick_20ms),
-        .btn_edge  (sdram_test_trigger_sys)
+        .btn_edge  (sdram_test_trigger)
     );
-
-    // ================================================================
-    // 【PLL 时钟管理】
-    // 输入 50MHz 系统时钟，生成:
-    // c0: 100MHz 0° 相位 (SDRAM 控制器工作时钟 clk_100m)
-    // c1: 100MHz -75° 相位 (SDRAM 物理芯片输出时钟 clk_100m_shift)
-    // ================================================================
-    wire clk_100m;
-    wire clk_100m_shift;
-    wire pll_locked;
-
-    pll_100m u_pll_100m (
-        .areset (!sys_rst_n),
-        .inclk0 (sys_clk),
-        .c0     (clk_100m),
-        .c1     (clk_100m_shift),
-        .locked (pll_locked)
-    );
-
-    // 100MHz 时钟域复位同步释放
-    reg rst_n_100m_r1, rst_n_100m_r2;
-    always @(posedge clk_100m or negedge sys_rst_n) begin
-        if (!sys_rst_n) begin
-            rst_n_100m_r1 <= 1'b0;
-            rst_n_100m_r2 <= 1'b0;
-        end else begin
-            rst_n_100m_r1 <= pll_locked;
-            rst_n_100m_r2 <= rst_n_100m_r1;
-        end
-    end
-    wire rst_n_100m = rst_n_100m_r2;
-
-    // key[2] 触发脉冲跨时钟域同步至 100MHz 域
-    reg sdram_trig_r1, sdram_trig_r2, sdram_trig_r3;
-    always @(posedge clk_100m or negedge rst_n_100m) begin
-        if (!rst_n_100m) begin
-            sdram_trig_r1 <= 1'b0;
-            sdram_trig_r2 <= 1'b0;
-            sdram_trig_r3 <= 1'b0;
-        end else begin
-            sdram_trig_r1 <= sdram_test_trigger_sys;
-            sdram_trig_r2 <= sdram_trig_r1;
-            sdram_trig_r3 <= sdram_trig_r2;
-        end
-    end
-    wire sdram_test_trigger = sdram_trig_r2 && !sdram_trig_r3;
 
     // ================================================================
     // 【物理驱动层 PHY / Driver】
@@ -221,7 +204,7 @@ module top #(
 
     // ================================================================
     // 【控制器层 Controller】
-    // W25Q16 硬件驱动控制器 (三段式状态机，硬件闭环 WREN 与 WIP 轮询)
+    // 1. W25Q16 硬件驱动控制器 (三段式状态机，硬件闭环 WREN 与 WIP 轮询)
     // ================================================================
     wire        flash_start;
     wire [ 2:0] flash_operation;
@@ -237,7 +220,6 @@ module top #(
         .clk  (sys_clk),
         .rst_n(rst_n),
 
-        // 上层测试应用接口
         .start     (flash_start),
         .operation (flash_operation),
         .address   (flash_address),
@@ -248,7 +230,6 @@ module top #(
         .done      (flash_done),
         .error     (flash_error),
 
-        // SPI PHY 底层接口
         .spi_start    (spi_start),
         .spi_burst_len(spi_burst_len),
         .spi_tx_req   (spi_tx_req),
@@ -260,103 +241,8 @@ module top #(
     );
 
     // ================================================================
-    // 【协议解析层 Protocol / Framing Layer】
-    // decode 模块：纯粹的协议流解码器，负责帧同步、拆包与流式分发
-    // ================================================================
-    wire        data_out_valid;
-    wire [ 7:0] data_out;
-    wire [16:0] data_out_addr;
-    wire [ 7:0] packet_type;
-    wire [16:0] packet_len;
-    wire        packet_done;
-    wire        packet_error;
-    wire        check_ok;
-
-    decode u_decode (
-        .sys_clk       (sys_clk),
-        .sys_rst_n     (rst_n),
-        .in_data       (uart_rx_data),
-        .data_ready    (uart_rx_valid),
-        .data_out_valid(data_out_valid),
-        .data_out      (data_out),
-        .data_out_addr (data_out_addr),
-        .packet_type   (packet_type),
-        .packet_len    (packet_len),
-        .packet_done   (packet_done),
-        .packet_error  (packet_error),
-        .check_ok      (check_ok)
-    );
-
-    // ================================================================
-    // 【业务应用层 Application Layer】
-    // 1. uart_app 模块：LED 控制业务、按键 key[0] 防抖及日常通信
-    // ================================================================
-    wire [7:0] app_tx_data;
-    wire       app_tx_wrreq;
-    wire [3:0] app_led;
-
-    uart_app u_uart_app (
-        .clk  (sys_clk),
-        .rst_n(rst_n),
-
-        // 协议输入接口
-        .data_out_valid(data_out_valid),
-        .data_out      (data_out),
-        .data_out_addr (data_out_addr),
-        .packet_type   (packet_type),
-        .packet_len    (packet_len),
-        .packet_done   (packet_done),
-        .packet_error  (packet_error),
-        .check_ok      (check_ok),
-
-        // 物理发送输出接口
-        .tx_data (app_tx_data),
-        .tx_wrreq(app_tx_wrreq),
-
-        // 外设引脚
-        .led(app_led),
-        .key(key[3:0])
-    );
-
-    // ================================================================
-    // 【业务应用层 Application Layer】
-    // 2. flash_test_app 模块：W25Q16 自检测试与 ASCII 串口上报
-    //    - 上电 0.5 秒自动执行读ID、擦除、验空、写入、验读全流程
-    //    - 支持通过 key[1] 随时按键再次测试
-    // ================================================================
-    wire [7:0] flash_tx_data;
-    wire       flash_tx_wrreq;
-
-    flash_test_app #(
-        .CLK_FREQ        (CLK_FREQ),
-        .AUTO_START_DELAY(32'd25_000_000)  // 50MHz 时钟下约 0.5s 上电延时
-    ) u_flash_test_app (
-        .clk  (sys_clk),
-        .rst_n(rst_n),
-
-        .btn_trigger(flash_test_trigger),
-
-        .flash_start    (flash_start),
-        .flash_operation(flash_operation),
-        .flash_address  (flash_address),
-        .flash_wr_data  (flash_wr_data),
-        .flash_rd_data  (flash_rd_data),
-        .flash_id       (flash_id),
-        .flash_busy     (flash_busy),
-        .flash_done     (flash_done),
-        .flash_error    (flash_error),
-
-        .tx_data (flash_tx_data),
-        .tx_wrreq(flash_tx_wrreq),
-        .tx_full (uart_tx_full),
-
-        .test_done(),
-        .test_pass()
-    );
-
-    // ================================================================
     // 【控制器与物理层 Controller & PHY】
-    // 3. SDRAM 控制器顶层封装 (sdram_top)
+    // 2. SDRAM 控制器顶层封装 (sdram_top)
     // ================================================================
     wire        sdram_wr_req;
     wire        sdram_rd_req;
@@ -406,10 +292,97 @@ module top #(
     );
 
     // ================================================================
+    // 【协议解析层 Protocol / Framing Layer】
+    // decode 模块：纯粹的协议流解码器，负责帧同步、拆包与流式分发
+    // ================================================================
+    wire        data_out_valid;
+    wire [ 7:0] data_out;
+    wire [16:0] data_out_addr;
+    wire [ 7:0] packet_type;
+    wire [16:0] packet_len;
+    wire        packet_done;
+    wire        packet_error;
+    wire        check_ok;
+
+    decode u_decode (
+        .sys_clk       (sys_clk),
+        .sys_rst_n     (rst_n),
+        .in_data       (uart_rx_data),
+        .data_ready    (uart_rx_valid),
+        .data_out_valid(data_out_valid),
+        .data_out      (data_out),
+        .data_out_addr (data_out_addr),
+        .packet_type   (packet_type),
+        .packet_len    (packet_len),
+        .packet_done   (packet_done),
+        .packet_error  (packet_error),
+        .check_ok      (check_ok)
+    );
+
+    // ================================================================
+    // 【业务应用层 Application Layer】
+    // 1. uart_app 模块：LED 控制业务、按键 key[0] 防抖及日常通信
+    // ================================================================
+    wire [7:0] app_tx_data;
+    wire       app_tx_wrreq;
+
+    uart_app u_uart_app (
+        .clk  (sys_clk),
+        .rst_n(rst_n),
+
+        .data_out_valid(data_out_valid),
+        .data_out      (data_out),
+        .data_out_addr (data_out_addr),
+        .packet_type   (packet_type),
+        .packet_len    (packet_len),
+        .packet_done   (packet_done),
+        .packet_error  (packet_error),
+        .check_ok      (check_ok),
+
+        .tx_data (app_tx_data),
+        .tx_wrreq(app_tx_wrreq),
+
+        .led(led[3:0]),
+        .key(key[3:0])
+    );
+
+    // ================================================================
+    // 【业务应用层 Application Layer】
+    // 2. flash_test_app 模块：W25Q16 自检测试与 ASCII 串口上报
+    // ================================================================
+    wire [7:0] flash_tx_data;
+    wire       flash_tx_wrreq;
+
+    flash_test_app #(
+        .CLK_FREQ        (CLK_FREQ),
+        .AUTO_START_DELAY(32'd25_000_000)
+    ) u_flash_test_app (
+        .clk  (sys_clk),
+        .rst_n(rst_n),
+
+        .btn_trigger(flash_test_trigger),
+
+        .flash_start    (flash_start),
+        .flash_operation(flash_operation),
+        .flash_address  (flash_address),
+        .flash_wr_data  (flash_wr_data),
+        .flash_rd_data  (flash_rd_data),
+        .flash_id       (flash_id),
+        .flash_busy     (flash_busy),
+        .flash_done     (flash_done),
+        .flash_error    (flash_error),
+
+        .tx_data (flash_tx_data),
+        .tx_wrreq(flash_tx_wrreq),
+        .tx_full (uart_tx_full),
+
+        .test_done(),
+        .test_pass()
+    );
+
+    // ================================================================
     // 【业务应用层 Application Layer】
     // 3. sdram_test_app 模块：SDRAM 突发读写自检应用
-    //    - 上电约 1ms 自动向 Bank0/Row0/Col0 突发写入 10 个递增数据并读回核对
-    //    - 支持通过 key[2] 随时重新发起测试
     // ================================================================
     wire        sdram_test_busy;
     wire        sdram_test_done;
@@ -422,7 +395,7 @@ module top #(
 
     sdram_test_app #(
         .TEST_ADDR       (24'h000000),
-        .TEST_BURST_LEN  (10'd10),
+        .TEST_BURST_LEN  (10'd512),
         .AUTO_START_WAIT (100_000)
     ) u_sdram_test_app (
         .clk        (clk_100m),
@@ -474,18 +447,6 @@ module top #(
         .tx_wrreq      (sdram_tx_wrreq),
         .tx_full       (uart_tx_full)
     );
-
-    // ================================================================
-    // 【板载 LED 状态显示】
-    // 默认展示 SDRAM 硬件状态 (低电平点亮):
-    // led[0]: SDRAM 初始化完成 (init_done)
-    // led[1]: SDRAM 测试运行中 (test_busy)
-    // led[2]: SDRAM 测试通过 (test_pass)
-    // led[3]: SDRAM 测试出错 (test_err)
-    // 若 uart_app 收到非零 LED 控制指令，则展示命令值
-    // ================================================================
-    wire [3:0] sdram_led = {~sdram_test_err, ~sdram_test_pass, ~sdram_test_busy, ~sdram_init_done};
-    assign led = (app_led != 4'b0000) ? app_led : sdram_led;
 
     // ================================================================
     // 【发送通道仲裁器】
