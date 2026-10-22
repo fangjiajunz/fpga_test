@@ -83,7 +83,6 @@ module top #(
     // 【定时节拍发生器 (Tick Generators)】
     // ================================================================
     wire tick_1s;
-    wire tick_20ms;
 
     tick_gen #(
         .MAX_COUNT(50_000_000 - 1)
@@ -93,14 +92,6 @@ module top #(
         .tick (tick_1s)
     );
 
-    tick_gen #(
-        .MAX_COUNT(1_000_000 - 1)  // 50MHz 时钟下 20ms
-    ) u_tick_20ms (
-        .clk  (sys_clk),
-        .rst_n(rst_n),
-        .tick (tick_20ms)
-    );
-
     // ================================================================
     // 【板载按键消抖 (纯模块例化)】
     // key[1]: 手动再次触发 Flash 读写自检
@@ -108,21 +99,27 @@ module top #(
     // ================================================================
     wire flash_test_trigger;
 
-    ax_debounce u_debounce_flash_key (
+    ax_debounce #(
+        .CLK_FREQ   (CLK_FREQ),
+        .DEBOUNCE_MS(20)
+    ) u_debounce_flash_key (
         .sys_clk   (sys_clk),
         .sys_rst_n (rst_n),
         .btn_in    (key[1]),
-        .timer_tick(tick_20ms),
+        .btn_out   (),
         .btn_edge  (flash_test_trigger)
     );
 
     wire sdram_test_trigger;
 
-    ax_debounce u_debounce_sdram_key (
+    ax_debounce #(
+        .CLK_FREQ   (CLK_FREQ),
+        .DEBOUNCE_MS(20)
+    ) u_debounce_sdram_key (
         .sys_clk   (sys_clk),
         .sys_rst_n (rst_n),
         .btn_in    (key[2]),
-        .timer_tick(tick_20ms),
+        .btn_out   (),
         .btn_edge  (sdram_test_trigger)
     );
 

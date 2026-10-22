@@ -9,11 +9,10 @@ module fifo_test (
     output wire [7:0] q_sig,
     output wire [5:0] usedw_sig,
     input  wire [3:0] key,
-    input  wire       tick_20ms
-);
+    );
 
     // ----------------------------
-    // FIFO 实例化
+    // FIFO 实例�?
     // ----------------------------
     fifo_8x64 fifo_inst (
         .clock(sys_clk),
@@ -34,21 +33,19 @@ module fifo_test (
     ax_debounce u_key0_debounce (
         .sys_clk   (sys_clk),
         .sys_rst_n (sys_rst_n),
-        .btn_in    (key[0]),      // 写按键
-        .timer_tick(tick_20ms),
-        .btn_edge  (key_edge[0])
+        .btn_in    (key[0]),      // 写按�?
+                .btn_edge  (key_edge[0])
     );
 
     ax_debounce u_key1_debounce (
         .sys_clk   (sys_clk),
         .sys_rst_n (sys_rst_n),
-        .btn_in    (key[1]),      // 读按键
-        .timer_tick(tick_20ms),
-        .btn_edge  (key_edge[1])
+        .btn_in    (key[1]),      // 读按�?
+                .btn_edge  (key_edge[1])
     );
 
     // ----------------------------
-    // 按键驱动 FIFO 写/读
+    // 按键驱动 FIFO �?�?
     // ----------------------------
     reg wrreq_r, rdreq_r;
 
@@ -57,18 +54,18 @@ module fifo_test (
             wrreq_r <= 1'b0;
             rdreq_r <= 1'b0;
         end else begin
-            // ---------- 写请求 ----------
+            // ---------- 写请�?----------
             if (key_edge[0] && !full_sig) begin
-                wrreq_r <= 1'b1;  // 按键触发写
+                wrreq_r <= 1'b1;  // 按键触发�?
             end else begin
-                wrreq_r <= 1'b0;  // 一拍写入
+                wrreq_r <= 1'b0;  // 一拍写�?
             end
 
-            // ---------- 读请求 ----------
+            // ---------- 读请�?----------
             if (key_edge[1] && !empty_sig) begin
-                rdreq_r <= 1'b1;  // 按键触发读
+                rdreq_r <= 1'b1;  // 按键触发�?
             end else begin
-                rdreq_r <= 1'b0;  // 一拍读取
+                rdreq_r <= 1'b0;  // 一拍读�?
             end
         end
     end
