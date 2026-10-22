@@ -38,7 +38,7 @@
 
 set_global_assignment -name DEVICE EP4CE10F17C8
 set_global_assignment -name FAMILY "Cyclone IV E"
-set_global_assignment -name TOP_LEVEL_ENTITY top
+set_global_assignment -name TOP_LEVEL_ENTITY test_top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 18.1.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:07:18  MAY 04, 2026"
 set_global_assignment -name LAST_QUARTUS_VERSION "18.1.0 Standard Edition"
@@ -336,6 +336,8 @@ set_global_assignment -name VERILOG_FILE ../rtl/app/sdram_test_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/app/sdram_report_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/common/async_fifo_wrapper.v
 set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_fifo_ctrl.v
+set_global_assignment -name VERILOG_FILE ../rtl/app/sdram_test_self.v
+set_global_assignment -name VERILOG_FILE ../rtl/app/test_top.v
 set_global_assignment -name SDC_FILE system.sdc
 set_global_assignment -name QIP_FILE ipcore/fifo_ip/fifo_8x64.qip
 set_global_assignment -name QIP_FILE ipcore/fifo_ip/async_fifo_16x512.qip

@@ -41,12 +41,12 @@ module ax_debounce #(
 
     // 2. 状态变化检测与连续稳定计时器
     // 50MHz 时钟下 20ms 对应 1,000,000 个周期，20位寄存器最大可表示 1,048,575
-    reg [19:0] cnt;
+    reg [31:0] cnt;
     reg        btn_prev;
 
     always @(posedge sys_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
-            cnt      <= 20'd0;
+            cnt      <= 32'd0;
             btn_prev <= 1'b1;
             btn_out  <= 1'b1;
             btn_edge <= 1'b0;
@@ -56,7 +56,7 @@ module ax_debounce #(
             // 只要检测到输入有电平跳变，计数器立刻归零重新计时
             if (btn_sync_d1 != btn_prev) begin
                 btn_prev <= btn_sync_d1;
-                cnt      <= 20'd0;
+                cnt      <= 32'd0;
             end else if (cnt < CNT_MAX) begin
                 cnt <= cnt + 1'b1;
             end else begin
