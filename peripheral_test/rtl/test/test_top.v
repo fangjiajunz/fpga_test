@@ -138,11 +138,11 @@ module test_top #(
     reg         do_write_trig;
     reg         do_read_trig;
     reg  [23:0] target_addr;
-    wire [ 9:0] target_len = 10'd256;
+    wire [ 9:0] target_len = 10'd4;
 
     // 顶层自定义数据模板配置
-    wire [15:0] test_wr_pattern = 16'h1000;  // 顶层指定：起始写 16'h1111
-    wire [15:0] test_exp_pattern = 16'h1000;  // 顶层指定：期望读 16'h1111
+    reg  [15:0] test_wr_pattern = 16'h1000;  // 顶层指定：起始写 16'h1111
+    reg  [15:0] test_exp_pattern = 16'h1000;  // 顶层指定：期望读 16'h1111
 
     wire        test_pass;
     wire        test_err;
@@ -183,27 +183,29 @@ module test_top #(
 
     always @(posedge clk_100m or negedge rst_n_100m) begin
         if (!rst_n_100m) begin
-            target_addr   <= 24'h000_000;
+            target_addr      <= 24'h000_000;
 
-
-
-            do_write_trig <= 1'b0;
-            do_read_trig  <= 1'b0;
-            is_writing    <= 1'b0;
-            is_reading    <= 1'b0;
+            test_exp_pattern <= 1'b0;
+            test_wr_pattern  <= 1'b0;
+            do_write_trig    <= 1'b0;
+            do_read_trig     <= 1'b0;
+            is_writing       <= 1'b0;
+            is_reading       <= 1'b0;
         end else begin
             // 按键 0 触发写 (仅在空闲且已完成初始化时响应)
             if (btn_edge_0 && sdram_init_done && !sdram_rw_busy && !is_writing && !is_reading) begin
-                do_write_trig <= 1'b1;
-                is_writing    <= 1'b1;
+                do_write_trig   <= 1'b1;
+                is_writing      <= 1'b1;
+                test_wr_pattern <= test_wr_pattern + 1;
             end else begin
                 do_write_trig <= 1'b0;
             end
 
             // 按键 1 触发读校验 (仅在空闲且已完成初始化时响应)
             if (btn_edge_1 && sdram_init_done && !sdram_rw_busy && !is_writing && !is_reading) begin
-                do_read_trig <= 1'b1;
-                is_reading   <= 1'b1;
+                do_read_trig     <= 1'b1;
+                is_reading       <= 1'b1;
+                test_exp_pattern <= test_exp_pattern + 1;
             end else begin
                 do_read_trig <= 1'b0;
             end

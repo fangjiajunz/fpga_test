@@ -316,7 +316,7 @@ set_global_assignment -name VERILOG_FILE ../rtl/timer/tick_gen.v
 set_global_assignment -name VERILOG_FILE ../rtl/spi/spi_phy/spi_phy.v
 set_global_assignment -name VERILOG_FILE ../rtl/spi/spi_phy/spi_master_top.v
 set_global_assignment -name VERILOG_FILE ../rtl/flash/w25q16_ctrl.v
-set_global_assignment -name VERILOG_FILE ../rtl/app/flash_test_app.v
+set_global_assignment -name VERILOG_FILE ../rtl/test/flash_test_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_tx_arbiter.v
 set_global_assignment -name VERILOG_FILE ../rtl/key/ax_debounce.v
 set_global_assignment -name VERILOG_FILE ../rtl/lcd/clk_div.v
@@ -332,12 +332,12 @@ set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_rw_ctrl.v
 set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_arbiter.v
 set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_phy.v
 set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_top.v
-set_global_assignment -name VERILOG_FILE ../rtl/app/sdram_test_app.v
-set_global_assignment -name VERILOG_FILE ../rtl/app/sdram_report_app.v
+set_global_assignment -name VERILOG_FILE ../rtl/test/sdram_test_app.v
+set_global_assignment -name VERILOG_FILE ../rtl/test/sdram_report_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/common/async_fifo_wrapper.v
 set_global_assignment -name VERILOG_FILE ../rtl/sdram/sdram_fifo_ctrl.v
-set_global_assignment -name VERILOG_FILE ../rtl/app/sdram_test_self.v
-set_global_assignment -name VERILOG_FILE ../rtl/app/test_top.v
+set_global_assignment -name VERILOG_FILE ../rtl/test/sdram_test_self.v
+set_global_assignment -name VERILOG_FILE ../rtl/test/test_top.v
 set_global_assignment -name SDC_FILE system.sdc
 set_global_assignment -name QIP_FILE ipcore/fifo_ip/fifo_8x64.qip
 set_global_assignment -name QIP_FILE ipcore/fifo_ip/async_fifo_16x512.qip
