@@ -38,7 +38,7 @@
 
 set_global_assignment -name DEVICE EP4CE10F17C8
 set_global_assignment -name FAMILY "Cyclone IV E"
-set_global_assignment -name TOP_LEVEL_ENTITY test_top
+set_global_assignment -name TOP_LEVEL_ENTITY top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 18.1.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:07:18  MAY 04, 2026"
 set_global_assignment -name LAST_QUARTUS_VERSION "18.1.0 Standard Edition"
@@ -242,6 +242,19 @@ set_location_assignment PIN_K15 -to sdram_data[13]
 set_location_assignment PIN_L16 -to sdram_data[14]
 set_location_assignment PIN_L15 -to sdram_data[15]
 
+# SDRAM IOE Fast Registers
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to sdram_data[*]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sdram_data[*]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to sdram_data[*]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sdram_addr[*]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sdram_ba[*]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sdram_cas_n
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sdram_ras_n
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sdram_we_n
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sdram_cs_n
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sdram_cke
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sdram_dqm[*]
+
 # SD card SPI mode
 # set_location_assignment PIN_K1 -to sd_miso
 # set_location_assignment PIN_J2 -to sd_clk
@@ -315,7 +328,13 @@ set_global_assignment -name VERILOG_FILE ../rtl/top/top.v
 set_global_assignment -name VERILOG_FILE ../rtl/timer/tick_gen.v
 set_global_assignment -name VERILOG_FILE ../rtl/spi/spi_phy/spi_phy.v
 set_global_assignment -name VERILOG_FILE ../rtl/spi/spi_phy/spi_master_top.v
-set_global_assignment -name VERILOG_FILE ../rtl/flash/w25q16_ctrl.v
+set_global_assignment -name VERILOG_FILE ../rtl/flash/sync_fifo.v
+set_global_assignment -name VERILOG_FILE ../rtl/flash/flash_store_ctrl.v
+set_global_assignment -name VERILOG_FILE ../rtl/flash/flash_read_ctrl.v
+set_global_assignment -name VERILOG_FILE ../rtl/flash/flash_schedule_ctrl.v
+set_global_assignment -name VERILOG_FILE ../rtl/flash/flash_cmd_ctrl.v
+set_global_assignment -name VERILOG_FILE ../rtl/flash/w25q16_phy.v
+set_global_assignment -name VERILOG_FILE ../rtl/flash/flash_top.v
 set_global_assignment -name VERILOG_FILE ../rtl/test/flash_test_app.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart/uart_tx_arbiter.v
 set_global_assignment -name VERILOG_FILE ../rtl/key/ax_debounce.v

@@ -29,6 +29,7 @@ module sdram_phy (
 );
 
     reg [15:0] wr_data_r;
+    reg [15:0] rd_data_r;
 
     // 控制命令与引脚直连
     assign {sdram_cs_n, sdram_ras_n, sdram_cas_n, sdram_we_n} = phy_cmd;
@@ -37,7 +38,7 @@ module sdram_phy (
     assign sdram_cke                                          = phy_cke;
     assign sdram_dqm                                          = phy_dqm;
 
-    // 写数据同步寄存
+    // 写数据同步寄存 (可自动布局至 IOE 输出寄存器)
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) wr_data_r <= 16'd0;
         else wr_data_r <= wr_data;
@@ -46,7 +47,12 @@ module sdram_phy (
     // 物理三态双向数据缓冲
     assign sdram_data = phy_data_out_en ? wr_data_r : 16'hzzzz;
 
-    // 读数据直接采样物理总线
-    assign rd_data    = sdram_data;
+    // 读数据在 IO 边界直接寄存采样 (可自动布局至 IOE 输入寄存器，消除引脚间走线偏斜)
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) rd_data_r <= 16'd0;
+        else rd_data_r <= sdram_data;
+    end
+
+    assign rd_data = rd_data_r;
 
 endmodule

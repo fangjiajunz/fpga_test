@@ -6,7 +6,7 @@
 // ==============================================================================
 
 module top #(
-    parameter UART_BPS = 2000000,
+    parameter UART_BPS = 115200,
     parameter CLK_FREQ = 50_000_000
 ) (
     input wire sys_clk,
@@ -103,11 +103,11 @@ module top #(
         .CLK_FREQ   (CLK_FREQ),
         .DEBOUNCE_MS(20)
     ) u_debounce_flash_key (
-        .sys_clk   (sys_clk),
-        .sys_rst_n (rst_n),
-        .btn_in    (key[1]),
-        .btn_out   (),
-        .btn_edge  (flash_test_trigger)
+        .sys_clk  (sys_clk),
+        .sys_rst_n(rst_n),
+        .btn_in   (key[1]),
+        .btn_out  (),
+        .btn_edge (flash_test_trigger)
     );
 
     wire sdram_test_trigger;
@@ -116,11 +116,11 @@ module top #(
         .CLK_FREQ   (CLK_FREQ),
         .DEBOUNCE_MS(20)
     ) u_debounce_sdram_key (
-        .sys_clk   (sys_clk),
-        .sys_rst_n (rst_n),
-        .btn_in    (key[2]),
-        .btn_out   (),
-        .btn_edge  (sdram_test_trigger)
+        .sys_clk  (sys_clk),
+        .sys_rst_n(rst_n),
+        .btn_in   (key[2]),
+        .btn_out  (),
+        .btn_edge (sdram_test_trigger)
     );
 
     // ================================================================
@@ -163,83 +163,49 @@ module top #(
 
     // ================================================================
     // 【物理驱动层 PHY / Driver】
-    // 2. SPI 主机物理层驱动 (spi_master_top)
     // ================================================================
-    wire       spi_start;
-    wire [7:0] spi_burst_len;
-    wire       spi_tx_req;
-    wire [7:0] spi_tx_byte;
-    wire       spi_rx_valid;
-    wire [7:0] spi_rx_byte;
-    wire       spi_busy;
-    wire       spi_done;
+    // 【Flash 控制器子系统】
+    // 采用至简设计法分层架构 (flash_top)，内含读写解耦控制、FIFO 调度与物理驱动
+    // ================================================================
+    wire        flash_wr_trig;
+    wire [ 1:0] flash_op_type;
+    wire [23:0] flash_wr_addr;
+    wire [31:0] flash_wr_data;
+    wire        flash_wr_rdy;
+    wire        flash_wr_done;
 
-    spi_master_top #(
-        .BURST_WIDTH(8),
-        .CPOL       (1'b0),
-        .CPHA       (1'b0),
-        .LSB_FIRST  (1'b0)
-    ) u_spi_master_top (
-        .sys_clk  (sys_clk),
-        .sys_rst_n(rst_n),
+    wire        flash_rd_trig;
+    wire [23:0] flash_rd_addr;
+    wire        flash_rd_rdy;
+    wire [31:0] flash_rd_data;
+    wire        flash_rd_vld;
 
-        .start    (spi_start),
-        .burst_len(spi_burst_len),
-        .tx_req   (spi_tx_req),
-        .tx_data  (spi_tx_byte),
+    flash_top u_flash_top (
+        .clk  (sys_clk),
+        .rst_n(rst_n),
 
-        .rx_valid(spi_rx_valid),
-        .rx_byte (spi_rx_byte),
-        .busy    (spi_busy),
-        .done    (spi_done),
+        // 写通道
+        .user_wr_trig(flash_wr_trig),
+        .user_op_type(flash_op_type),
+        .user_wr_addr(flash_wr_addr),
+        .user_wr_data(flash_wr_data),
+        .user_wr_rdy (flash_wr_rdy),
+        .user_wr_done(flash_wr_done),
 
+        // 读通道
+        .user_rd_trig(flash_rd_trig),
+        .user_rd_addr(flash_rd_addr),
+        .user_rd_rdy (flash_rd_rdy),
+        .user_rd_data(flash_rd_data),
+        .user_rd_vld (flash_rd_vld),
+
+        // 外部 SPI 引脚
         .spi_cs_n(spi_cs_n),
         .spi_sclk(spi_sclk),
         .spi_mosi(spi_mosi),
         .spi_miso(spi_miso)
     );
 
-    // ================================================================
-    // 【控制器层 Controller】
-    // 1. W25Q16 硬件驱动控制器 (三段式状态机，硬件闭环 WREN 与 WIP 轮询)
-    // ================================================================
-    wire        flash_start;
-    wire [ 2:0] flash_operation;
-    wire [23:0] flash_address;
-    wire [31:0] flash_wr_data;
-    wire [31:0] flash_rd_data;
-    wire [23:0] flash_id;
-    wire        flash_busy;
-    wire        flash_done;
-    wire        flash_error;
-
-    w25q16_ctrl u_w25q16_ctrl (
-        .clk  (sys_clk),
-        .rst_n(rst_n),
-
-        .start     (flash_start),
-        .operation (flash_operation),
-        .address   (flash_address),
-        .wr_data_32(flash_wr_data),
-        .rd_data_32(flash_rd_data),
-        .flash_id  (flash_id),
-        .busy      (flash_busy),
-        .done      (flash_done),
-        .error     (flash_error),
-
-        .spi_start    (spi_start),
-        .spi_burst_len(spi_burst_len),
-        .spi_tx_req   (spi_tx_req),
-        .spi_tx_byte  (spi_tx_byte),
-        .spi_rx_valid (spi_rx_valid),
-        .spi_rx_byte  (spi_rx_byte),
-        .spi_busy     (spi_busy),
-        .spi_done     (spi_done)
-    );
-
-    // ================================================================
-    // 【控制器与物理层 Controller & PHY】
-    // 2. SDRAM 控制器顶层封装 (sdram_top)
     // ================================================================
     wire        sdram_wr_req;
     wire        sdram_rd_req;
@@ -359,15 +325,18 @@ module top #(
 
         .btn_trigger(flash_test_trigger),
 
-        .flash_start    (flash_start),
-        .flash_operation(flash_operation),
-        .flash_address  (flash_address),
-        .flash_wr_data  (flash_wr_data),
-        .flash_rd_data  (flash_rd_data),
-        .flash_id       (flash_id),
-        .flash_busy     (flash_busy),
-        .flash_done     (flash_done),
-        .flash_error    (flash_error),
+        .flash_wr_trig(flash_wr_trig),
+        .flash_op_type(flash_op_type),
+        .flash_wr_addr(flash_wr_addr),
+        .flash_wr_data(flash_wr_data),
+        .flash_wr_rdy (flash_wr_rdy),
+        .flash_wr_done(flash_wr_done),
+
+        .flash_rd_trig(flash_rd_trig),
+        .flash_rd_addr(flash_rd_addr),
+        .flash_rd_rdy (flash_rd_rdy),
+        .flash_rd_data(flash_rd_data),
+        .flash_rd_vld (flash_rd_vld),
 
         .tx_data (flash_tx_data),
         .tx_wrreq(flash_tx_wrreq),

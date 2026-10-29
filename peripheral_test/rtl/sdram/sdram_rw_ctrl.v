@@ -197,8 +197,7 @@ module sdram_rw_ctrl #(
                   (state == `W_WD && cnt_clk < cur_len - 10'd2));
 
             // 读响应：在 W_RD 期间从 SDRAM 接收有效数据打入读 FIFO (提前对齐首个突发数据)
-            rd_ack <= ((state == `W_CL && next_state == `W_RD) ||
-                       (state == `W_RD && cnt_clk < cur_len - 10'd1));
+            rd_ack <= (state == `W_RD && cnt_clk < cur_len);
 
             // 操作完成指示脉冲
             rw_done <= (state == `W_TRP && next_state == `W_IDLE);
@@ -251,14 +250,21 @@ module sdram_rw_ctrl #(
                 end
 
                 `W_WD: begin
-                    if (cnt_clk == cur_len - 10'd1) begin
-                        {rw_cke, rw_cmd} <= `CMD_B_STOP;  // 提前1拍发写突发终止
+                    {rw_cke, rw_cmd} <= `CMD_NOP;
+                    rw_ba       <= 2'b11;
+                    rw_addr_out <= 13'h1FFF;
+                    data_out_en <= 1'b1;
+                end
+
+                `W_TWR: begin
+                    if (state == `W_WD) begin
+                        {rw_cke, rw_cmd} <= `CMD_B_STOP;  // 在进入 W_TWR 的首拍精确发出写突发终止
                     end else begin
                         {rw_cke, rw_cmd} <= `CMD_NOP;
                     end
                     rw_ba       <= 2'b11;
                     rw_addr_out <= 13'h1FFF;
-                    data_out_en <= 1'b1;
+                    data_out_en <= 1'b0;
                 end
 
                 `W_PRE: begin

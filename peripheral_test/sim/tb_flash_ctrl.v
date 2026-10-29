@@ -4,84 +4,52 @@ module tb_flash_ctrl;
 
     localparam CLK_PERIOD = 20; // 50MHz
 
-    reg        clk;
-    reg        rst_n;
+    reg         clk;
+    reg         rst_n;
 
-    reg        flash_start;
-    reg  [2:0] flash_op;
-    wire       flash_busy;
-    wire       flash_done;
-    wire       flash_error;
-    wire [23:0] flash_id;
+    // 写业务通道
+    reg         user_wr_trig;
+    reg  [ 1:0] user_op_type;
+    reg  [23:0] user_wr_addr;
+    reg  [31:0] user_wr_data;
+    wire        user_wr_rdy;
+    wire        user_wr_done;
 
-    // SPI 互联信号
-    wire       spi_start;
-    wire [7:0] spi_burst_len;
-    wire       spi_tx_req;
-    wire [7:0] spi_tx_byte;
-
-    wire       spi_rx_valid;
-    wire [7:0] spi_rx_byte;
-    wire       spi_busy;
-    wire       spi_done;
+    // 读业务通道
+    reg         user_rd_trig;
+    reg  [23:0] user_rd_addr;
+    wire        user_rd_rdy;
+    wire [31:0] user_rd_data;
+    wire        user_rd_vld;
 
     // SPI 物理引脚
-    wire       spi_cs_n;
-    wire       spi_sclk;
-    wire       spi_mosi;
-    reg        spi_miso;
+    wire        spi_cs_n;
+    wire        spi_sclk;
+    wire        spi_mosi;
+    reg         spi_miso;
 
-    // 实例化 w25q16_ctrl (重构后的三段式 Flash 控制器)
-    w25q16_ctrl u_w25q16_ctrl (
-        .clk           (clk),
-        .rst_n         (rst_n),
+    // 实例化至简设计法 Flash 系统顶层
+    flash_top u_flash_top (
+        .clk          (clk),
+        .rst_n        (rst_n),
 
-        .start         (flash_start),
-        .operation     (flash_op),
-        .address       (24'h000000),
-        .wr_data       (8'h00),
+        .user_wr_trig (user_wr_trig),
+        .user_op_type (user_op_type),
+        .user_wr_addr (user_wr_addr),
+        .user_wr_data (user_wr_data),
+        .user_wr_rdy  (user_wr_rdy),
+        .user_wr_done (user_wr_done),
 
-        .rd_data       (),
-        .flash_id      (flash_id),
-        .busy          (flash_busy),
-        .done          (flash_done),
-        .error         (flash_error),
+        .user_rd_trig (user_rd_trig),
+        .user_rd_addr (user_rd_addr),
+        .user_rd_rdy  (user_rd_rdy),
+        .user_rd_data (user_rd_data),
+        .user_rd_vld  (user_rd_vld),
 
-        .spi_start     (spi_start),
-        .spi_burst_len (spi_burst_len),
-        .spi_tx_req    (spi_tx_req),
-        .spi_tx_byte   (spi_tx_byte),
-
-        .spi_rx_valid  (spi_rx_valid),
-        .spi_rx_byte   (spi_rx_byte),
-        .spi_busy      (spi_busy),
-        .spi_done      (spi_done)
-    );
-
-    // 实例化 spi_master_top (重构后的三段式 SPI 控制器)
-    spi_master_top #(
-        .BURST_WIDTH(8),
-        .CPOL       (1'b0),
-        .CPHA       (1'b0),
-        .LSB_FIRST  (1'b0)
-    ) u_spi_master_top (
-        .sys_clk   (clk),
-        .sys_rst_n (rst_n),
-
-        .start     (spi_start),
-        .burst_len (spi_burst_len),
-        .tx_req    (spi_tx_req),
-        .tx_data   (spi_tx_byte),
-
-        .rx_valid  (spi_rx_valid),
-        .rx_byte   (spi_rx_byte),
-        .busy      (spi_busy),
-        .done      (spi_done),
-
-        .spi_cs_n  (spi_cs_n),
-        .spi_sclk  (spi_sclk),
-        .spi_mosi  (spi_mosi),
-        .spi_miso  (spi_miso)
+        .spi_cs_n     (spi_cs_n),
+        .spi_sclk     (spi_sclk),
+        .spi_mosi     (spi_mosi),
+        .spi_miso     (spi_miso)
     );
 
     // 时钟生成 50MHz
@@ -91,113 +59,222 @@ module tb_flash_ctrl;
     end
 
     // ================================================================
-    // W25Q16 硬件从机行为仿真模型：
-    // 在 CS_N 为低时，先接收 1 字节命令，如果命令是 0x9F，则后续 3 字节输出 EF 40 15
+    // W25Q16 硬件从机行为仿真模型
+    // 支持 0x06 (WREN), 0x20 (扇区擦除), 0x02 (页写), 0x03 (读数据), 0x05 (读状态)
     // ================================================================
-    reg [7:0] flash_response [0:2];
-    integer   miso_byte_idx;
-    integer   miso_bit_idx;
-    reg [7:0] cmd_received;
-    integer   cmd_bit_idx;
+    reg [7:0] cmd_byte;
+    reg [7:0] addr_bytes [0:2];
+    reg [7:0] data_bytes [0:3];
+    reg [7:0] sim_memory [0:15]; // 模拟前 16 字节存储器
+    reg       wip;
+    integer   bit_cnt;
+    integer   byte_cnt;
 
     initial begin
-        flash_response[0] = 8'hEF; // 制造商 ID (Winbond)
-        flash_response[1] = 8'h40; // 存储器类型
-        flash_response[2] = 8'h15; // 容量 ID (16Mb)
-        spi_miso          = 1'b0;
+        wip      = 1'b0;
+        spi_miso = 1'b0;
+        sim_memory[0] = 8'hAA;
+        sim_memory[1] = 8'hBB;
+        sim_memory[2] = 8'hCC;
+        sim_memory[3] = 8'hDD;
     end
 
-    // SPI 从机时序模拟 (CPOL=0, CPHA=0: 在 SCLK 上升沿采样 MOSI, 在 SCLK 下降沿更新 MISO)
     always @(negedge spi_cs_n) begin
-        cmd_received  = 8'h00;
-        cmd_bit_idx   = 7;
-        miso_byte_idx = 0;
-        miso_bit_idx  = 7;
-
-        // CPHA=0 下，第 0 位在 CS 拉低时即预置在 MISO 线上（虽然第 0 字节无效）
+        cmd_byte = 8'h00;
+        byte_cnt = 0;
+        bit_cnt  = 7;
         spi_miso = 1'b0;
 
         while (!spi_cs_n) begin
-            // 等待 SCLK 上升沿采样 MOSI
             @(posedge spi_sclk);
-            if (cmd_bit_idx >= 0) begin
-                cmd_received[cmd_bit_idx] = spi_mosi;
-                cmd_bit_idx = cmd_bit_idx - 1;
-            end
-
-            // 等待 SCLK 下降沿更新 MISO
-            @(negedge spi_sclk);
-            if (cmd_bit_idx < 0) begin
-                // 命令接收完毕，后续按顺序吐出 0xEF 0x40 0x15
-                if (miso_byte_idx < 3) begin
-                    spi_miso = flash_response[miso_byte_idx][miso_bit_idx];
-                    if (miso_bit_idx == 0) begin
-                        miso_bit_idx  = 7;
-                        miso_byte_idx = miso_byte_idx + 1;
+            if (byte_cnt == 0) begin
+                cmd_byte[bit_cnt] = spi_mosi;
+                if (bit_cnt == 0) begin
+                    bit_cnt = 7;
+                    byte_cnt = 1;
+                end else begin
+                    bit_cnt = bit_cnt - 1;
+                end
+            end else if (cmd_byte == 8'h06) begin
+                // WREN 命令：只有 1 字节
+            end else if (cmd_byte == 8'h05) begin
+                // 读状态命令：在下降沿吐出状态寄存器 (bit 0 = WIP)
+            end else if (cmd_byte == 8'h20 || cmd_byte == 8'h02 || cmd_byte == 8'h03) begin
+                if (byte_cnt <= 3) begin
+                    addr_bytes[byte_cnt-1][bit_cnt] = spi_mosi;
+                    if (bit_cnt == 0) begin
+                        bit_cnt = 7;
+                        byte_cnt = byte_cnt + 1;
                     end else begin
-                        miso_bit_idx = miso_bit_idx - 1;
+                        bit_cnt = bit_cnt - 1;
+                    end
+                end else if (cmd_byte == 8'h02) begin
+                    // 写入数据
+                    if (byte_cnt <= 7) begin
+                        data_bytes[byte_cnt-4][bit_cnt] = spi_mosi;
+                        if (bit_cnt == 0) begin
+                            bit_cnt = 7;
+                            byte_cnt = byte_cnt + 1;
+                        end else begin
+                            bit_cnt = bit_cnt - 1;
+                        end
                     end
                 end
             end
+
+            @(negedge spi_sclk);
+            if (!spi_cs_n) begin
+                if (cmd_byte == 8'h05 && byte_cnt >= 1) begin
+                    // 吐出状态寄存器：bit 0 为 WIP
+                    spi_miso = (bit_cnt == 0) ? wip : 1'b0;
+                    if (bit_cnt == 0) bit_cnt = 7;
+                    else bit_cnt = bit_cnt - 1;
+                end else if (cmd_byte == 8'h03 && byte_cnt >= 4) begin
+                    // 读数据命令：吐出 sim_memory 中的数据
+                    if (byte_cnt - 4 < 4) begin
+                        spi_miso = sim_memory[byte_cnt-4][bit_cnt];
+                        if (bit_cnt == 0) begin
+                            bit_cnt = 7;
+                            byte_cnt = byte_cnt + 1;
+                        end else begin
+                            bit_cnt = bit_cnt - 1;
+                        end
+                    end
+                end
+            end
+        end
+
+        // CS 拉高后的动作
+        if (cmd_byte == 8'h20) begin
+            // 扇区擦除模拟：模拟 5 个时钟周期的 WIP
+            wip = 1'b1;
+            repeat (5) @(posedge clk);
+            sim_memory[0] = 8'hFF;
+            sim_memory[1] = 8'hFF;
+            sim_memory[2] = 8'hFF;
+            sim_memory[3] = 8'hFF;
+            wip = 1'b0;
+        end else if (cmd_byte == 8'h02) begin
+            // 写入模拟：模拟 5 个时钟周期的 WIP
+            wip = 1'b1;
+            repeat (5) @(posedge clk);
+            sim_memory[0] = data_bytes[0];
+            sim_memory[1] = data_bytes[1];
+            sim_memory[2] = data_bytes[2];
+            sim_memory[3] = data_bytes[3];
+            wip = 1'b0;
         end
     end
 
     // 测试主流程
     initial begin
-        flash_start = 1'b0;
-        flash_op    = 3'd0; // OP_READ_ID
-        rst_n       = 1'b0;
+        user_wr_trig = 1'b0;
+        user_op_type = 2'b00;
+        user_wr_addr = 24'd0;
+        user_wr_data = 32'd0;
+        user_rd_trig = 1'b0;
+        user_rd_addr = 24'd0;
+        rst_n        = 1'b0;
 
         #(CLK_PERIOD * 5);
         rst_n = 1'b1;
         #(CLK_PERIOD * 5);
 
         $display("\n=======================================================");
-        $display(" Start W25Q16 Flash Controller READ_ID Test");
+        $display(" Start flash_top (至简设计法分层架构) 完整读写测试");
         $display("=======================================================");
 
+        // ------------------------------------------------------------
+        // 测试 1：读取初始数据 (预置为 0xAABBCCDD)
+        // ------------------------------------------------------------
+        $display("\n[TEST 1] 发起 4 字节读数据...");
         @(posedge clk);
-        flash_start <= 1'b1;
-        flash_op    <= 3'd0; // OP_READ_ID
+        user_rd_addr <= 24'h000000;
+        user_rd_trig <= 1'b1;
         @(posedge clk);
-        flash_start <= 1'b0;
+        user_rd_trig <= 1'b0;
 
-        // 等待 flash_done 变高
-        @(posedge flash_done);
-        #(CLK_PERIOD * 2);
-
-        $display("[RESULT] flash_id = 0x%06X (Expected: 0xEF4015)", flash_id);
-
-        if (flash_id === 24'hEF4015 && flash_error === 1'b0) begin
-            $display("[PASS] Flash JEDEC ID READ_ID Test Successfully Passed!\n");
-        end else begin
-            $display("[FAIL] JEDEC ID mismatch or error occurred! error=%b", flash_error);
+        @(posedge user_rd_vld);
+        $display("[TEST 1 RESULT] 读出数据: 0x%08X (期望: 0xAABBCCDD)", user_rd_data);
+        if (user_rd_data !== 32'hAABBCCDD) begin
+            $display("[FAIL] TEST 1 FAILED!");
             $finish;
         end
 
         #(CLK_PERIOD * 10);
 
-        // ============================================================
-        // 测试 2：触发尚未实现的非法操作 (OP = 3'd1)，验证错误拦截
-        // ============================================================
-        $display("--- Test 2: Trigger Unsupported Operation (OP = 1) ---");
+        // ------------------------------------------------------------
+        // 测试 2：扇区擦除
+        // ------------------------------------------------------------
+        $display("\n[TEST 2] 发起 4KB 扇区擦除...");
         @(posedge clk);
-        flash_start <= 1'b1;
-        flash_op    <= 3'd1;
+        user_op_type <= 2'b01; // 扇区擦除
+        user_wr_addr <= 24'h000000;
+        user_wr_trig <= 1'b1;
         @(posedge clk);
-        flash_start <= 1'b0;
+        user_wr_trig <= 1'b0;
 
-        @(posedge flash_done);
-        if (flash_error === 1'b1) begin
-            $display("[PASS] Test 2: Unsupported operation correctly raised error pulse!\n");
-        end else begin
-            $display("[FAIL] Test 2: Expected flash_error=1, got %b", flash_error);
+        @(posedge user_wr_done);
+        $display("[TEST 2 RESULT] 扇区擦除成功完成!");
+
+        #(CLK_PERIOD * 10);
+
+        // ------------------------------------------------------------
+        // 测试 3：回读验证擦除是否全 0xFF
+        // ------------------------------------------------------------
+        $display("\n[TEST 3] 读空检查...");
+        @(posedge clk);
+        user_rd_addr <= 24'h000000;
+        user_rd_trig <= 1'b1;
+        @(posedge clk);
+        user_rd_trig <= 1'b0;
+
+        @(posedge user_rd_vld);
+        $display("[TEST 3 RESULT] 读出数据: 0x%08X (期望: 0xFFFFFFFF)", user_rd_data);
+        if (user_rd_data !== 32'hFFFFFFFF) begin
+            $display("[FAIL] TEST 3 FAILED!");
             $finish;
         end
 
         #(CLK_PERIOD * 10);
-        $display("=======================================================");
-        $display(" ALL W25Q16 FLASH CTRL TESTS PASSED SUCCESSFULLY!");
+
+        // ------------------------------------------------------------
+        // 测试 4：写入 4 字节 0x12345678
+        // ------------------------------------------------------------
+        $display("\n[TEST 4] 写入 4 字节数据 0x12345678...");
+        @(posedge clk);
+        user_op_type <= 2'b10; // 写入 4 字节
+        user_wr_addr <= 24'h000000;
+        user_wr_data <= 32'h12345678;
+        user_wr_trig <= 1'b1;
+        @(posedge clk);
+        user_wr_trig <= 1'b0;
+
+        @(posedge user_wr_done);
+        $display("[TEST 4 RESULT] 写入成功完成!");
+
+        #(CLK_PERIOD * 10);
+
+        // ------------------------------------------------------------
+        // 测试 5：回读验证写入数据
+        // ------------------------------------------------------------
+        $display("\n[TEST 5] 回读验证...");
+        @(posedge clk);
+        user_rd_addr <= 24'h000000;
+        user_rd_trig <= 1'b1;
+        @(posedge clk);
+        user_rd_trig <= 1'b0;
+
+        @(posedge user_rd_vld);
+        $display("[TEST 5 RESULT] 读出数据: 0x%08X (期望: 0x12345678)", user_rd_data);
+        if (user_rd_data !== 32'h12345678) begin
+            $display("[FAIL] TEST 5 FAILED!");
+            $finish;
+        end
+
+        #(CLK_PERIOD * 10);
+        $display("\n=======================================================");
+        $display(" 恭喜！至简设计法 Flash 系统全部读写测试顺利通过 (PASS)!");
         $display("=======================================================\n");
         $finish;
     end
